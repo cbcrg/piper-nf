@@ -10,7 +10,7 @@ Tutorial
 
 To run the tutorial simple execute the following command line:
 
-   $ ./nextflow src/piper.nf
+    $ ./nextflow src/piper.nf
 
 
 
