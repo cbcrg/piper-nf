@@ -172,7 +172,7 @@ task('format') {
 
         ## rename and move to the target folder
         for x in seq_*; do
-        SEQID=`grep -o -E "^>\\S+" $x | tr -d ">" | sed 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
+        SEQID=`grep -E "^>" $x | tr -d ">" | sed 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
         mv $x ${CHR_DB}/$SEQID;
         done
 
@@ -260,7 +260,7 @@ task ('exonerate') {
     for x in .seq_*; do
       SEQID=`grep '>' \$x`
       FILENAME=`grep '>' \$x | sed 's/^>\\(.*\\)_hit\\d*.*\$/\\1/'`
-      printf "\${SEQID}_${specie}\\n" > \${FILENAME}.fa
+      printf "\${SEQID}_${specie}\\n" >> \${FILENAME}.fa
       cat \$x | grep -v '>' >> \${FILENAME}.fa
     done
 
