@@ -10,10 +10,11 @@
  */
 
 params['query-chunk-len'] = 100
-params['query'] = "./tutorial/5_RNA_queries.fa"
-params['genomes-db'] = "./db"
+params['query'] = './tutorial/5_RNA_queries.fa'
+params['genomes-db'] = './db'
 params['result-dir'] = './result'
 params['max-threads'] = Runtime.getRuntime().availableProcessors()
+params.blastStrategy = 'ncbi-blast'
 
 // these parameters are mutually exclusive
 // Input genome can be specified by
@@ -48,7 +49,6 @@ if( !dbPath.exists() ) {
  * which control the pipeline execution.
  *
  */
-
 
 allGenomes = [:]
 
@@ -157,7 +157,7 @@ task('format') {
         mkdir -p ${BLAST_DB}
 
         ## Format the BLAST DB
-        makeblastdb -dbtype nucl -in ${FASTA} -out ${BLAST_DB}/db
+        x-format.sh ${params.blastStrategy} ${FASTA} ${BLAST_DB}
     fi
 
 
@@ -210,8 +210,6 @@ blastName.each {
  * Implements the BLAST step
  */
 
-outFmt = '6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-
 
 task ('blast') {
     input blastId
@@ -224,7 +222,7 @@ task ('blast') {
     """
     set -e
     echo ${blastId} > exonerateId
-    blastn -db ${allGenomes[blastId].blast_db}/db -query ${blastQuery} -outfmt '$outFmt' > blastResult
+    x-blast.sh ${params.blastStrategy} ${allGenomes[blastId].blast_db} ${blastQuery} > blastResult
     ln -s ${blastQuery} exonerateQuery
     """
 
@@ -351,6 +349,7 @@ simMatrixFile.copyTo( new File(resultDir,'simMatrix.csv') )
 
 
 // ----==== utility methods ====----
+
 
 def parseGenomesFile(File dbPath, File sourcePath) {
 
