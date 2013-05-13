@@ -182,7 +182,7 @@ task('format') {
 
         ## rename and move to the target folder
         for x in seq_*; do
-        SEQID=`grep -E "^>" $x | tr -d ">" | sed 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
+        SEQID=`grep -E "^>" $x | sed 's/^>\\(\\S*\\).*/\\1/'  | sed 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
         mv $x ${CHR_DB}/$SEQID;
         done
 
