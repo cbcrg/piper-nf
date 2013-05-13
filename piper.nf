@@ -9,11 +9,11 @@
  *
  */
 
-params['query-chunk-len'] = 100
-params['query'] = './tutorial/5_RNA_queries.fa'
-params['genomes-db'] = './db'
-params['result-dir'] = './result'
-params['max-threads'] = Runtime.getRuntime().availableProcessors()
+params.queryChunkSize = 100
+params.query = './tutorial/5_RNA_queries.fa'
+params.genomesDb = './db'
+params.resultDir = './result'
+params.maxThreads = Runtime.getRuntime().availableProcessors()
 params.blastStrategy = 'ncbi-blast'
 
 // these parameters are mutually exclusive
@@ -26,7 +26,7 @@ params['genomes-list'] = null
 params['genomes-folder'] = "${HOME}/workspace/piper/tutorial/genomes/"
 
 queryFile = file(params.query)
-dbPath = file(params['genomes-db'])
+dbPath = file(params.genomesDb)
 
 if( !dbPath.exists() ) {
     log.warn "Creating genomes-db path: $dbPath"
@@ -34,6 +34,16 @@ if( !dbPath.exists() ) {
         exit 1, "Cannot create genomes-db path: $dbPath -- check file system permissions"
     }
 }
+
+log.info "P I P E R - RNA mapping pipeline"
+log.info "================================"
+log.info "query         : ${queryFile}"
+log.info "genomesDb     : ${dbPath}"
+log.info "queryChunkSize: ${params.queryChunkSize}"
+log.info "resultDir     : ${params.resultDir}"
+log.info "blastStrategy : ${params.blastStrategy}"
+log.info "maxThreads    : ${params.maxThreads}"
+log.info "\n"
 
 /*
  * Find out all the genomes files in the specified directory.
@@ -52,19 +62,19 @@ if( !dbPath.exists() ) {
 
 allGenomes = [:]
 
-// -- when the provided source path is a FILE
-//      each line represent the path to a genome file
+// when the provided source path is a FILE
+// each line represent the path to a genome file
 if( params['genomes-file'] ) {
     def genomesFile = file(params['genomes-file'])
     if( genomesFile.isEmpty() ) {
         exit 1, "Not a valid input genomes descriptor file: ${genomesFile}"
     }
 
-    allGenomes = parseGenomesFile(dbPath, genomesFile)
+    allGenomes = parseGenomesFile(dbPath, genomesFile, params.blastStrategy)
 }
 
 else if( params['genomes-list'] ) {
-   allGenomes = parseGenomesList(dbPath, params['genomes-list'])
+   allGenomes = parseGenomesList(dbPath, params['genomes-list'], params.blastStrategy)
 }
 
 else if( params['genomes-folder'] ) {
@@ -73,7 +83,7 @@ else if( params['genomes-folder'] ) {
         exit 4, "Not a valid input genomes folder: ${sourcePath}"
     }
 
-    allGenomes = parseGenomesFolder(dbPath, sourcePath)
+    allGenomes = parseGenomesFolder(dbPath, sourcePath, params.blastStrategy)
 }
 
 else {
@@ -98,18 +108,18 @@ formatName = allGenomes.keySet()
 /*
  * Split the query input file in many small files (chunks).
  *
- * The number of sequences in each chunk is controlled by the parameter 'query-chunk-len'
+ * The number of sequences in each chunk is controlled by the parameter 'queryChunkSize'
  * The chunk files are saved in a local folder define by the variable 'querySplits'
  *
  */
 
 // create a folder that may be cached, using the 'queryFile' and the number chunks as cache key
-querySplits = cacheableDir([queryFile, params.'query-chunk-len'])
+querySplits = cacheableDir([queryFile, params.queryChunkSize])
 
 if( querySplits.isEmpty() ) {
     log.info "Splitting query file: $queryFile .."
     chunkCount=0
-    queryFile.chunkFasta( params.'query-chunk-len' ) { sequence ->
+    queryFile.chunkFasta( params.queryChunkSize ) { sequence ->
         def file = new File(querySplits, "seq_${chunkCount++}")
         file.text = sequence
     }
@@ -141,7 +151,7 @@ def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'cspli
 task('format') {
     input formatName
     output blastName
-    threads params['max-threads']
+    threads params.maxThreads
 
     """
     set -e
@@ -217,12 +227,12 @@ task ('blast') {
     output exonerateId
     output exonerateQuery
     output blastResult
-    threads params['max-threads']
+    threads params.maxThreads
 
     """
     set -e
     echo ${blastId} > exonerateId
-    x-blast.sh ${params.blastStrategy} ${allGenomes[blastId].blast_db} ${blastQuery} > blastResult
+    x-blast.sh '${params.blastStrategy}' ${allGenomes[blastId].blast_db} ${blastQuery} > blastResult
     ln -s ${blastQuery} exonerateQuery
     """
 
@@ -241,7 +251,7 @@ task ('exonerate') {
     input blastResult
     output '*.fa': exonerateOut
     output '*.gtf': exonerateGtf
-    threads params['max-threads']
+    threads params.maxThreads
 
     """
     specie='${exonerateId.text.trim()}'
@@ -317,7 +327,10 @@ similarity = merge('similarity') {
  */
 
 resultDir = file(params.resultDir)
-resultDir.mkdirs()
+resultDir.with {
+    if( isNotEmpty() ) { deleteDir() }
+    mkdirs()
+}
 
 exonerateGtf.each { file ->
     if( file.size() == 0 ) return
@@ -351,7 +364,7 @@ simMatrixFile.copyTo( new File(resultDir,'simMatrix.csv') )
 // ----==== utility methods ====----
 
 
-def parseGenomesFile(File dbPath, File sourcePath) {
+def parseGenomesFile(File dbPath, File sourcePath, String blastStrategy) {
 
     def absPath = dbPath.absoluteFile
     def result = [:]
@@ -380,7 +393,7 @@ def parseGenomesFile(File dbPath, File sourcePath) {
         result[ genomeId ] = [
                 genome_fa: new File(path).absoluteFile,
                 chr_db: new File(absPath,"${genomeId}/chr"),
-                blast_db: new File(absPath, "${genomeId}/blastdb")
+                blast_db: new File(absPath, "${genomeId}/${blastStrategy}-db")
             ]
     }
 
@@ -389,7 +402,7 @@ def parseGenomesFile(File dbPath, File sourcePath) {
 
 
 
-def parseGenomesList(File dbPath, String genomesList) {
+def parseGenomesList(File dbPath, String genomesList, String blastStrategy) {
 
     def count=0
     def files = genomesList.split(',').collect { new File(it.trim()).absoluteFile }
@@ -402,14 +415,14 @@ def parseGenomesList(File dbPath, String genomesList) {
         result[ genomeId ] = [
                 genome_fa: genomeFile,
                 chr_db: new File(absPath,"${genomeId}/chr"),
-                blast_db: new File(absPath, "${genomeId}/blastdb")
+                blast_db: new File(absPath, "${genomeId}/${blastStrategy}-db")
             ]
 
     }
     result
 }
 
-def parseGenomesFolder(File dbPath, File sourcePath) {
+def parseGenomesFolder(File dbPath, File sourcePath, String blastStrategy) {
 
     def result = [:]
     def absPath = dbPath.absoluteFile
@@ -420,7 +433,7 @@ def parseGenomesFolder(File dbPath, File sourcePath) {
             result[ path.name ] = [
                     genome_fa: fasta,
                     chr_db: new File(absPath,"${path.name}/chr"),
-                    blast_db: new File(absPath, "${path.name}/blastdb")
+                    blast_db: new File(absPath, "${path.name}/${blastStrategy}-db")
                 ]
         }
     }
@@ -441,7 +454,7 @@ def void testParseGenomesFile() {
             z/file3.fa
             '''
 
-        def result = parseGenomesFile(db, source)
+        def result = parseGenomesFile(db, source, 'wu-blast')
 
         assert result.size() == 3
 
@@ -453,9 +466,9 @@ def void testParseGenomesFile() {
         assert result['genx'].chr_db == new File(db, 'genx/chr').absoluteFile
         assert result['gen3'].chr_db == new File(db, 'gen3/chr').absoluteFile
 
-        assert result['gen1'].blast_db == new File(db, 'gen1/blastdb').absoluteFile
-        assert result['genx'].blast_db == new File(db, 'genx/blastdb').absoluteFile
-        assert result['gen3'].blast_db == new File(db, 'gen3/blastdb').absoluteFile
+        assert result['gen1'].blast_db == new File(db, 'gen1/wu-blast-db').absoluteFile
+        assert result['genx'].blast_db == new File(db, 'genx/wu-blast-db').absoluteFile
+        assert result['gen3'].blast_db == new File(db, 'gen3/wu-blast-db').absoluteFile
 
     }
     finally {
@@ -470,7 +483,7 @@ def void testParseGenomesList() {
       def db = new File('db')
 
       // call the function to test
-      def result = parseGenomesList(db, 'alpha.fa, beta.fa, delta.fa')
+      def result = parseGenomesList(db, 'alpha.fa, beta.fa, delta.fa', 'x-blast')
 
       // verify result
       assert result.size() == 3
@@ -483,9 +496,9 @@ def void testParseGenomesList() {
       assert result['gen2'].chr_db == new File(db, 'gen2/chr') .absoluteFile
       assert result['gen3'].chr_db == new File(db, 'gen3/chr') .absoluteFile
 
-      assert result['gen1'].blast_db == new File(db, 'gen1/blastdb') .absoluteFile
-      assert result['gen2'].blast_db == new File(db, 'gen2/blastdb') .absoluteFile
-      assert result['gen3'].blast_db == new File(db, 'gen3/blastdb') .absoluteFile
+      assert result['gen1'].blast_db == new File(db, 'gen1/x-blast-db') .absoluteFile
+      assert result['gen2'].blast_db == new File(db, 'gen2/x-blast-db') .absoluteFile
+      assert result['gen3'].blast_db == new File(db, 'gen3/x-blast-db') .absoluteFile
 
 }
 
@@ -509,7 +522,7 @@ def void testParseGenomesFolder() {
       def db = new File('db')
 
       // call the function to test
-      def result = parseGenomesFolder(db, root)
+      def result = parseGenomesFolder(db, root, 'y-blast')
 
       // verify result
       assert result.size() == 3
@@ -522,9 +535,9 @@ def void testParseGenomesFolder() {
       assert result['beta'].chr_db == new File(db, 'beta/chr') .absoluteFile
       assert result['delta'].chr_db == new File(db, 'delta/chr') .absoluteFile
 
-      assert result['alpha'].blast_db == new File(db, 'alpha/blastdb') .absoluteFile
-      assert result['beta'].blast_db == new File(db, 'beta/blastdb') .absoluteFile
-      assert result['delta'].blast_db == new File(db, 'delta/blastdb') .absoluteFile
+      assert result['alpha'].blast_db == new File(db, 'alpha/y-blast-db') .absoluteFile
+      assert result['beta'].blast_db == new File(db, 'beta/y-blast-db') .absoluteFile
+      assert result['delta'].blast_db == new File(db, 'delta/y-blast-db') .absoluteFile
 
   }
   finally {
