@@ -13,7 +13,6 @@ params.queryChunkSize = 100
 params.query = './tutorial/5_RNA_queries.fa'
 params.genomesDb = './db'
 params.resultDir = './result'
-params.maxThreads = Runtime.getRuntime().availableProcessors()
 params.blastStrategy = 'ncbi-blast'
 
 // these parameters are mutually exclusive
@@ -42,7 +41,7 @@ log.info "genomesDb     : ${dbPath}"
 log.info "queryChunkSize: ${params.queryChunkSize}"
 log.info "resultDir     : ${params.resultDir}"
 log.info "blastStrategy : ${params.blastStrategy}"
-log.info "maxThreads    : ${params.maxThreads}"
+log.info "poolSize      : ${config.poolSize}"
 log.info "\n"
 
 /*
@@ -151,8 +150,7 @@ def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'cspli
 task('format') {
     input formatName
     output blastName
-    threads params.maxThreads
-
+    
     """
     set -e
     NAME=${formatName}
@@ -227,8 +225,7 @@ task ('blast') {
     output exonerateId
     output exonerateQuery
     output blastResult
-    threads params.maxThreads
-
+    
     """
     set -e
     echo ${blastId} > exonerateId
@@ -251,8 +248,7 @@ task ('exonerate') {
     input blastResult
     output '*.fa': exonerateOut
     output '*.gtf': exonerateGtf
-    threads params.maxThreads
-
+    
     """
     specie='${exonerateId.text.trim()}'
     chr=${allGenomes[exonerateId.text.trim()].chr_db}
