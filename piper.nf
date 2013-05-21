@@ -23,7 +23,7 @@ params.blastStrategy = 'ncbi-blast'
 // - genomes-folder: a directory containing a folder for each genome FASTA file
 params['genomes-file'] = null
 params['genomes-list'] = null
-params['genomes-folder'] = "${HOME}/workspace/piper/tutorial/genomes/"
+params['genomes-folder'] = "./tutorial/genomes/"
 
 queryFile = file(params.query)
 dbPath = file(params.genomesDb)
