@@ -29,6 +29,5 @@ Dependencies
  * T-Coffee - http://tcoffee.org
  * Exonerate 2.2 - http://www.ebi.ac.uk/~guy/exonerate/ 
  * chr_subseq - unknown author 
-
-
-
+ * gnu-sed (Mac OSX only)
+ * gnu-csplit (Mac OSX only)
