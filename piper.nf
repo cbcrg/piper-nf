@@ -145,6 +145,7 @@ queryFile.chunkFasta() { String chunk ->
  */
 
 
+def sed_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gsed' : 'sed')
 def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'csplit')
 
 task('format') {
@@ -180,7 +181,7 @@ task('format') {
 
         ## rename and move to the target folder
         for x in seq_*; do
-        SEQID=`grep -E "^>" $x | sed 's/^>\\(\\S*\\).*/\\1/'  | sed 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
+        SEQID=`grep -E "^>" $x | ${sed_cmd} -r 's/^>(\\S*).*/\\1/' | ${sed_cmd} 's/[\\>\\<\\/\\''\\:\\\\]/_/'`
         mv $x ${CHR_DB}/$SEQID;
         done
 
@@ -265,7 +266,7 @@ task ('exonerate') {
     ## plus append the specie to th sequence id
     for x in .seq_*; do
       SEQID=`grep '>' \$x`
-      FILENAME=`grep '>' \$x | sed 's/^>\\(.*\\)_hit\\d*.*\$/\\1/'`
+      FILENAME=`grep '>' \$x | ${sed_cmd} -r 's/^>(.*)_hit\\d*.*\$/\\1/'`
       printf "\${SEQID}_${specie}\\n" >> \${FILENAME}.fa
       cat \$x | grep -v '>' >> \${FILENAME}.fa
     done
