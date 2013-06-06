@@ -20,7 +20,7 @@ makeblastdb -dbtype nucl -in $2 -out $3/db
 ;;
 
 'wu-blast')
-xdformat -n -o $3/db - < $2
+xdformat -n -o $3/db $2
 ;;
 
 *) echo "Not a valid BLAST strategy: $1"; exit 1
