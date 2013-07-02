@@ -14,6 +14,9 @@ params.query = './tutorial/5_RNA_queries.fa'
 params.genomesDb = './db'
 params.resultDir = './result'
 params.blastStrategy = 'ncbi-blast'
+params.exonerateSuccess = '1'
+params.exonerateMode = 'exhaustive'
+
 
 // these parameters are mutually exclusive
 // Input genome can be specified by
@@ -36,12 +39,14 @@ if( !dbPath.exists() ) {
 
 log.info "P I P E R - RNA mapping pipeline"
 log.info "================================"
-log.info "query         : ${queryFile}"
-log.info "genomesDb     : ${dbPath}"
-log.info "queryChunkSize: ${params.queryChunkSize}"
-log.info "resultDir     : ${params.resultDir}"
-log.info "blastStrategy : ${params.blastStrategy}"
-log.info "poolSize      : ${config.poolSize}"
+log.info "query              : ${queryFile}"
+log.info "genomesDb          : ${dbPath}"
+log.info "queryChunkSize     : ${params.queryChunkSize}"
+log.info "resultDir          : ${params.resultDir}"
+log.info "blastStrategy      : ${params.blastStrategy}"
+log.info "poolSize           : ${config.poolSize}"
+log.info "exonerateSuccess:  : ${params.exonerateSuccess}"
+log.info "exonerateMode:     : ${params.exonerateMode}"
 log.info "\n"
 
 /*
@@ -254,7 +259,7 @@ task ('exonerate') {
     specie='${exonerateId.text.trim()}'
     chr=${allGenomes[exonerateId.text.trim()].chr_db}
     ## apply exonerate
-    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr -exonerate_lines_mode 1000 -exonerate_success_mode 1 -ner no
+    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
     if [ ! -s blastResult.fa ]; then exit 0; fi
 
     ## exonerateRemapping create a file named 'blastResult.fa'
