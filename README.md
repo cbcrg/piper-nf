@@ -17,7 +17,7 @@ When done, move in the project root folder just created `piper-nf`,
 it contains an example dataset in the `tutorial` folder. 
 
 Launch the pipeline execution by entering the following command 
-on your shell temrinal:
+on your shell terminal:
 
     $ ./nextflow piper.nf
 
