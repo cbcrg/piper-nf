@@ -67,7 +67,7 @@ Pipeline parameters
 Cluster support
 ---------------
 
-Piper-NF execution relies on (Nextflow)[http://nextflow-project.org] framework which provides an abstraction between
+Piper-NF execution relies on [Nextflow](http://nextflow-project.org) framework which provides an abstraction between
 the pipeline functional logic and the underlying processing system.
 
 Thus it is possible to execute it on your computer or any cluster resource
