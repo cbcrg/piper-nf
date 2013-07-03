@@ -31,7 +31,7 @@ Pipeline parameters
 
   * The query transcripts file in multi-fasta format
   * Example: `nextflow piper.nf --query=/some/path/query.fa`
-
+  <br>
 
 **genomes-file**
 
