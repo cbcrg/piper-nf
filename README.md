@@ -27,38 +27,37 @@ to see how enter your data on the program command line.
 Pipeline parameters
 -------------------
 
-**query**
+####query
 
   * The query transcripts file in multi-fasta format
   * Example: `nextflow piper.nf --query=/some/path/query.fa`
-  <br>
 
-**genomes-file**
+####genomes-file
 
   * The file listing the full paths to the genomes files
   * Example: `nextflow piper.nf --genomes-file=my-genomes.txt`
 
 
-**genomes-db**
+####genomes-db
 
   * The location where the BLAST formatted *DB* are stored
   * Example: `nextflow piper.nf --genomes-db=/my/db/path`
 
 
-**query-chunk-size**
+####query-chunk-size
 
   * Number of sequences in each chunck in which is sliced the query file
   * Example: ``nextflow piper.nf --query-chunk-size=50
 
 
-**result-dir**
+####result-dir
 
   * The location where the result files are stored.
   * Please note: if the folder exists, the all existing content will be deleted without further notice
   * Example: `nextflow piper.nf --result-dir=./my-result/`
 
 
-**blast-strategy**
+####blast-strategy
 
   * Which BLAST program to be used, `ncbi-blast` (default) or `wu-blast`
   * Example: `nextflow piper.nf` --blast-strategy=wu-blast`
@@ -68,7 +67,7 @@ Pipeline parameters
 Cluster support
 ---------------
 
-Pipeline execution relies on (Nextflow)[http://nextflow-project.org] framework which provides an abstraction between
+Piper-NF execution relies on (Nextflow)[http://nextflow-project.org] framework which provides an abstraction between
 the pipeline functional logic and the underlying processing system.
 
 Thus it is possible to execute it on your computer or any cluster resource
@@ -97,8 +96,7 @@ synchronisation, file(s) staging/un-staging, etc.
 
 Alternatively the same declaration can be defined in the file `$HOME/.nextflow/config`.
 
-
-Dependencies 
+Dependencies
 ------------
  
  * NCBI BLAST+ - http://blast.ncbi.nlm.nih.gov/
