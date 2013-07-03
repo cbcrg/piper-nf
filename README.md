@@ -47,7 +47,7 @@ Pipeline parameters
 #####query-chunk-size
 
   * Number of sequences in each chunck in which is sliced the query file
-  * Example: ``nextflow piper.nf --query-chunk-size=50
+  * Example: `nextflow piper.nf --query-chunk-size=50`
 
 
 #####result-dir
@@ -60,7 +60,7 @@ Pipeline parameters
 #####blast-strategy
 
   * Which BLAST program to be used, `ncbi-blast` (default) or `wu-blast`
-  * Example: `nextflow piper.nf` --blast-strategy=wu-blast`
+  * Example: `nextflow piper.nf --blast-strategy=wu-blast`
 
 
 
