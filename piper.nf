@@ -1,6 +1,32 @@
-#!/usr/bin/env nextflow
-
 /*
+ * Copyright (c) 2013, Centre for Genomic Regulation (CRG) and the authors.
+ *
+ *   This file is part of 'Piper-NF'.
+ *
+ *   Piper-NF is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   Piper-NF is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with Piper-NF.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+
+/* 
+ * Main Piper-NF pipeline script
+ *
+ * @authors
+ * Giovanni Bussotti <giovannibussotti@gmail.com>
+ * Paolo Di Tommaso <paolo.ditommaso@gmail.com>
+ * Pablo Prieto <poena.funesta@gmail.com> 
+ *
+ *
  * Defines the pipeline parameters.
  * The values in the 'params' map can be overridden on the command line by specifying a
  * option prefixed with a double '-' char, for example
