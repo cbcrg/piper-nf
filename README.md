@@ -63,6 +63,35 @@ Pipeline parameters
   * Example: `nextflow piper.nf --blast-strategy=wu-blast`
 
 
+Run using Vagrant
+-----------------
+
+To avoid having to install all the pipeline dependencies, you may test the pipeline using 
+the provided Vagrant VM, which downloads and configures all the required pieces 
+of software for you. See http://www.vagrantup.com for more details about Vagrant.
+
+The Vagrant environment uses the Ubuntu Precise 64 virtual machine, if you don't have it 
+in your Vagrant boxes list, it will be downloaded automatically. 
+
+To launch the VM move to the pipeline root folder `grape-nf` and enter the following command:
+  
+    $ vagrant up 
+
+
+When it boots up and the configuration steps are terminated, login into the VM instance 
+and move to the Grape pipeline folder 
+
+    $ vagrant ssh 
+    $ cd /vagrant
+    
+Now you can launch the pipeline as shown: 
+
+	 $ ./nextflow piper.nf
+
+
+When finished, stop the VM using the command `vagrant halt` or `vagrant destroy`, depending if you
+want to temporary stop the execution or delete permanently the VM with all its files. 
+
 
 Cluster support
 ---------------
