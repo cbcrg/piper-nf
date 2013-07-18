@@ -163,7 +163,7 @@ else {
 
 allQueryIDs = []
 queryFile.chunkFasta() { String chunk ->
-    allQueryIDs << chunk.readLines()[0].substring(1)
+    allQueryIDs << chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
 }
 
 

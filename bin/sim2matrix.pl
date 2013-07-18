@@ -34,7 +34,7 @@ my @notFound;
 open (Q,"<$queryName") or die "Error[sim2matrix.pl]!";
 foreach my $line (<Q>){
     chomp $line;
-    if ($line =~ /^>(.+)/){
+    if ($line =~ /^>(\S+).*/){
 	my $id = $1;
 	push (@notFound , $id) if (! -e "${dataDir}/$id");
     }
