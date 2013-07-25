@@ -368,7 +368,7 @@ exonerateGtf.each { file ->
 }
 
 simFolder = val()
-similarity.whenBound { file -> simFolder << file.parent }
+similarity.whenBound { file -> if(file instanceof File) simFolder << file.parent }
 
 /*
  * Compute the similarity Matrix
