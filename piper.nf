@@ -42,6 +42,7 @@ params.resultDir = './result'
 params.blastStrategy = 'ncbi-blast'
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
+params.alignMethod = 'slow_pair'
 
 
 // these parameters are mutually exclusive
@@ -66,13 +67,14 @@ if( !dbPath.exists() ) {
 log.info "P I P E R - RNA mapping pipeline"
 log.info "================================"
 log.info "query              : ${queryFile}"
-log.info "genomesDb          : ${dbPath}"
-log.info "queryChunkSize     : ${params.queryChunkSize}"
-log.info "resultDir          : ${params.resultDir}"
-log.info "blastStrategy      : ${params.blastStrategy}"
-log.info "poolSize           : ${config.poolSize}"
-log.info "exonerateSuccess:  : ${params.exonerateSuccess}"
-log.info "exonerateMode:     : ${params.exonerateMode}"
+log.info "genomes-db         : ${dbPath}"
+log.info "query-chunk-size   : ${params.queryChunkSize}"
+log.info "result-dir         : ${params.resultDir}"
+log.info "blast-strategy     : ${params.blastStrategy}"
+log.info "exonerate-success  : ${params.exonerateSuccess}"
+log.info "exonerate-mode     : ${params.exonerateMode}"
+log.info "align-method       : ${params.alignMethod}"
+log.info "pool-size          : ${config.poolSize}"
 log.info "\n"
 
 /*
@@ -250,18 +252,18 @@ blastName.each {
  * Implements the BLAST step
  */
 
+blastResult = channel()
 
 task ('blast') {
     input blastId
     input blastQuery
     output exonerateId
     output exonerateQuery
-    output blastResult
+    output '*.mf2': blastResult
     
     """
-    set -e
     echo ${blastId} > exonerateId
-    x-blast.sh '${params.blastStrategy}' ${allGenomes[blastId].blast_db} ${blastQuery} > blastResult
+    x-blast.sh '${params.blastStrategy}' ${allGenomes[blastId].blast_db} ${blastQuery} > ${blastId}.mf2
     ln -s ${blastQuery} exonerateQuery
     """
 
@@ -286,12 +288,12 @@ task ('exonerate') {
     chr=${allGenomes[exonerateId.text.trim()].chr_db}
     ## apply exonerate
     exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
-    if [ ! -s blastResult.fa ]; then exit 0; fi
+    if [ ! -s *.fa ]; then exit 0; fi
 
-    ## exonerateRemapping create a file named 'blastResult.fa'
+    ## exonerateRemapping create a file named '*.fa'
     ## split the exonerate result into single files
-    ${split_cmd} blastResult.fa '%^>%' '/^>/' '{*}' -f .seq_ -n 5
-    mv blastResult.fa .blastResult.fa
+    ${split_cmd} *.fa '%^>%' '/^>/' '{*}' -f .seq_ -n 5
+    mv *.fa .exonerate.fa
 
     ## rename the seq_xxx files so that the file name match the seq fasta id
     ## plus append the specie to th sequence id
@@ -302,7 +304,7 @@ task ('exonerate') {
       cat \$x | grep -v '>' >> \${FILENAME}.fa
     done
 
-    mv blastResult.ex.gtf \${specie}.ex.gtf
+    mv *.ex.gtf \${specie}.ex.gtf
     """
 }
 
@@ -335,7 +337,7 @@ alignment = task('align') {
     output '*.aln'
 
     """
-    t_coffee -in $fastaToAlign -method slow_pair -n_core 1
+    t_coffee -in $fastaToAlign -method ${params.alignMethod} -n_core 1
     """
 }
 
@@ -344,9 +346,7 @@ similarity = merge('similarity') {
     output '*'
 
     """
-    fileName=\$(basename "$alignment")
-    baseName="\${fileName%.*}"
-    t_coffee -other_pg seq_reformat -in $alignment -output sim > \$baseName
+    t_coffee -other_pg seq_reformat -in $alignment -output sim > ${alignment.baseName}
     """
 }
 
