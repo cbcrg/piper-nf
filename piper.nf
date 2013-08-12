@@ -304,7 +304,6 @@ task ('exonerate') {
       cat \$x | grep -v '>' >> \${FILENAME}.fa
     done
 
-    mv *.ex.gtf \${specie}.ex.gtf
     """
 }
 
@@ -319,8 +318,7 @@ fastaToAlign = merge('prepare_mfa') {
 
     """
     # Extract the file name w/o the extension
-    fileName=\$(basename "$fastaToMerge")
-    baseName="\${fileName%.*}"
+    baseName="${fastaToMerge.baseName}"
 
     # Only the first time append the query sequence
     if [ ! -e \$baseName.mfa ]; then
