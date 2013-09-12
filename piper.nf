@@ -133,9 +133,6 @@ allGenomes.each { name, entry ->
     }
 }
 
-// get all genomes ID found and put into a list
-formatName = allGenomes.keySet()
-
 
 /*
  * Split the query input file in many small files (chunks).
@@ -182,8 +179,8 @@ def sed_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gsed' : 'sed')
 def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'csplit')
 
 task('format') {
-    input formatName
-    output blastName
+    input val: formatName, from: allGenomes.keySet()
+    output val: formatName, into: blastName
     
     """
     set -e
@@ -220,8 +217,6 @@ task('format') {
 
     fi
 
-    echo $NAME > blastName
-
     """
 }
 
@@ -233,9 +228,8 @@ task('format') {
 blastId = channel()
 blastQuery = channel()
 
-blastName.each {
+blastName.each { String name ->
 
-    def name = it.text.trim()
     querySplits.eachFile { chunk ->
         log.info "Blasting > $name - chunk: $chunk"
         synchronized(this) {
@@ -252,19 +246,16 @@ blastName.each {
  * Implements the BLAST step
  */
 
-blastResult = channel()
-
 task ('blast') {
     input blastId
     input blastQuery
-    output exonerateId
-    output exonerateQuery
-    output '*.mf2': blastResult
+
+    output val: blastId, into: exonerateId
+    output val: blastQuery, into: exonerateQuery
+    output file:'*.mf2', into: blastResult
     
     """
-    echo ${blastId} > exonerateId
     x-blast.sh '${params.blastStrategy}' ${allGenomes[blastId].blast_db} ${blastQuery} > ${blastId}.mf2
-    ln -s ${blastQuery} exonerateQuery
     """
 
 }
@@ -273,19 +264,17 @@ task ('blast') {
  * Given the blast output execute the 'exonerate' step
  */
 
-exonerateOut = channel()
-exonerateGtf = channel()
 
 task ('exonerate') {
     input exonerateId
     input exonerateQuery
     input blastResult
-    output '*.fa': exonerateOut
-    output '*.gtf': exonerateGtf
+    output file: '*.fa', into: exonerateOut
+    output file: '*.gtf', into: exonerateGtf
     
     """
-    specie='${exonerateId.text.trim()}'
-    chr=${allGenomes[exonerateId.text.trim()].chr_db}
+    specie='${exonerateId}'
+    chr=${allGenomes[exonerateId].chr_db}
     ## apply exonerate
     exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
     if [ ! -s *.fa ]; then exit 0; fi
@@ -311,10 +300,10 @@ task ('exonerate') {
 fastaToMerge = channel()
 exonerateOut.filter { file -> file.baseName in allQueryIDs  } .into (fastaToMerge)
 
-fastaToAlign = merge('prepare_mfa') {
+merge('prepare_mfa') {
 
     input fastaToMerge
-    output '*.mfa'
+    output file: '*.mfa', into: fastaToAlign
 
     """
     # Extract the file name w/o the extension
@@ -330,18 +319,18 @@ fastaToAlign = merge('prepare_mfa') {
     """
 }
 
-alignment = task('align') {
+task('align') {
     input fastaToAlign
-    output '*.aln'
+    output file: '*.aln', into: alignment
 
     """
     t_coffee -in $fastaToAlign -method ${params.alignMethod} -n_core 1
     """
 }
 
-similarity = merge('similarity') {
+merge('similarity') {
     input alignment
-    output '*'
+    output file: '*', into: similarity
 
     """
     t_coffee -other_pg seq_reformat -in $alignment -output sim > ${alignment.baseName}
