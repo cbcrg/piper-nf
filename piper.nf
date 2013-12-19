@@ -36,10 +36,10 @@
  */
 
 params.queryChunkSize = 100
-params.query = './tutorial/5_RNA_queries.fa'
-params.genomesDb = './db'
-params.resultDir = './result'
-params.blastStrategy = 'ncbi-blast'
+params.query = 'tutorial/5_RNA_queries.fa'
+params.genomesDb = 'db'
+params.resultDir = 'result'
+params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
 params.alignMethod = 'slow_pair'
@@ -52,7 +52,7 @@ params.alignMethod = 'slow_pair'
 // - genomes-folder: a directory containing a folder for each genome FASTA file
 params['genomes-file'] = null
 params['genomes-list'] = null
-params['genomes-folder'] = "./tutorial/genomes/"
+params['genomes-folder'] = "tutorial/genomes/"
 
 queryFile = file(params.query)
 dbPath = file(params.genomesDb)
@@ -98,7 +98,7 @@ allGenomes = [:]
 // each line represent the path to a genome file
 if( params['genomes-file'] ) {
     def genomesFile = file(params['genomes-file'])
-    if( genomesFile.isEmpty() ) {
+    if( genomesFile.empty() ) {
         exit 1, "Not a valid input genomes descriptor file: ${genomesFile}"
     }
 
@@ -111,7 +111,7 @@ else if( params['genomes-list'] ) {
 
 else if( params['genomes-folder'] ) {
     def sourcePath = file(params['genomes-folder'])
-    if( !sourcePath.exists() || sourcePath.isEmpty() ) {
+    if( !sourcePath.exists() || sourcePath.empty() ) {
         exit 4, "Not a valid input genomes folder: ${sourcePath}"
     }
 
@@ -356,6 +356,7 @@ process matrix {
     echo true
     input:
 	file similarity
+
     output:
     file simMatrix
 
@@ -377,7 +378,6 @@ simMatrixFile.copyTo( resultDir )
 
 def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
 
-    def absPath = dbPath
     def result = [:]
 
     // parse the genomes input file files (genome-id, path to genome file)
@@ -403,8 +403,8 @@ def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
 
         result[ genomeId ] = [
                 genome_fa: file(path),
-                chr_db: absPath.resolve("${genomeId}/chr"),
-                blast_db: absPath.resolve("${genomeId}/${blastStrategy}-db")
+                chr_db: dbPath.resolve("${genomeId}/chr"),
+                blast_db: dbPath.resolve("${genomeId}/${blastStrategy}-db")
             ]
     }
 
@@ -427,7 +427,6 @@ def parseGenomesList(def dbPath, String genomesList, String blastStrategy) {
                 chr_db: dbPath.resolve("${genomeId}/chr"),
                 blast_db: dbPath.resolve("${genomeId}/${blastStrategy}-db")
             ]
-
     }
     result
 }
@@ -436,8 +435,8 @@ def parseGenomesFolder(def dbPath, def sourcePath, String blastStrategy) {
 
     def result = [:]
 
-    sourcePath.eachDir { path ->
-        def fasta = path.listFiles().find { file -> file.name.endsWith('.fa') }
+    sourcePath.eachDir { Path path ->
+        def fasta = path.listFiles().find { Path file -> file.name.endsWith('.fa') }
         if( fasta ) {
             result[ path.name ] = [
                     genome_fa: fasta,
