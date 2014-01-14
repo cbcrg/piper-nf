@@ -18,6 +18,14 @@
  */
 
 
+import groovyx.gpars.dataflow.operator.DataflowEventAdapter
+import groovyx.gpars.dataflow.operator.DataflowProcessor
+import com.google.common.collect.Multiset
+import com.google.common.collect.HashMultiset
+import nextflow.util.CacheHelper
+import java.nio.file.Files
+
+
 /* 
  * Main Piper-NF pipeline script
  *
@@ -40,9 +48,10 @@ params.query = 'tutorial/5_RNA_queries.fa'
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
+params.alignStrategy = 'slow_pair'      // defines the T-Coffee alignment method
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
-params.alignMethod = 'slow_pair'
+params.exonerateChunkSize = 200
 
 
 // these parameters are mutually exclusive
@@ -64,17 +73,18 @@ if( !dbPath.exists() ) {
     }
 }
 
-log.info "P I P E R - RNA mapping pipeline"
-log.info "================================"
-log.info "query              : ${queryFile}"
-log.info "genomes-db         : ${dbPath}"
-log.info "query-chunk-size   : ${params.queryChunkSize}"
-log.info "result-dir         : ${params.resultDir}"
-log.info "blast-strategy     : ${params.blastStrategy}"
-log.info "exonerate-success  : ${params.exonerateSuccess}"
-log.info "exonerate-mode     : ${params.exonerateMode}"
-log.info "align-method       : ${params.alignMethod}"
-log.info "pool-size          : ${config.poolSize}"
+log.info "P I P E R - RNA mapping pipeline - ver 1.1"
+log.info "=========================================="
+log.info "query               : ${queryFile}"
+log.info "genomes-db          : ${dbPath}"
+log.info "query-chunk-size    : ${params.queryChunkSize}"
+log.info "result-dir          : ${params.resultDir}"
+log.info "blast-strategy      : ${params.blastStrategy}"
+log.info "align-strategy      : ${params.alignStrategy}"
+log.info "exonerate-success:  : ${params.exonerateSuccess}"
+log.info "exonerate-mode:     : ${params.exonerateMode}"
+log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
+log.info "pool-size           : ${config.poolSize}"
 log.info "\n"
 
 /*
@@ -159,10 +169,22 @@ else {
 }
 
 
-allQueryIDs = []
+// use a set since there should be not repetition
+allQueryIDs = new HashSet()
+
+queryEntries = cacheableDir(queryFile)
+
 queryFile.chunkFasta() { String chunk ->
-    allQueryIDs << chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
+    String queryId = chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
+
+    allQueryIDs << queryId
+    // store the chunk to a file named as the 'queryId'
+    def fileEntry = queryEntries.resolve(queryId)
+    if( fileEntry.empty() ) {
+        fileEntry.text = chunk
+    }
 }
+
 
 /*
  * Create the required databases (BLAST,CHR) if they does not exists.
@@ -194,7 +216,7 @@ process formatBlast {
 
     output:
     val specie into fmtBlastOut
-
+    
     """
     ## Create the BLAST db if they does not exist
     if [[ ! `ls -A ${blast_db} 2>/dev/null` ]]; then
@@ -243,118 +265,171 @@ blastName = fmtBlastOut.phase(fmtChrOut).map { tuple -> tuple[0] }
 
 process blast {
     input:
-    each blastId from blastName   
-    file 'blastQuery' from querySplits.listFiles()  
+    each blastId from blastName
+    file 'blastQuery' from querySplits.listFiles()
 
     output:
-    val blastId into exonerateId
-    file 'blastQuery' into exonerateQuery
-    file '*.mf2' into blastResult
-    
-    script: 
+    set ( blastId, 'blastQuery', '*.mf2' ) into blastOut
+
+    script:
     def db_path = allGenomes[blastId].blast_db
-    
+
     if( params.blastStrategy == 'ncbi-blast' )
 
     	"""
     	fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-    	blastn -db $db_path/db -query blastQuery -outfmt "\$fmt" > ${blastId}.mf2 
-    	""" 
+    	blastn -db $db_path/db -query blastQuery -outfmt "\$fmt" > ${blastId}.mf2
+    	"""
 
-		
-	else if( params.blastStrategy == 'wu-blast' ) 
+	else if( params.blastStrategy == 'wu-blast' )
 		"""
-    	wu-blastn $db_path/db blastQuery -mformat=2 -e 0.00001 -cpus 1 -filter=seg -lcfilter > ${blastId}.mf2 
-    	""" 
-
+    	wu-blastn $db_path/db blastQuery -mformat=2 -e 0.00001 -cpus 1 -filter=seg -lcfilter > ${blastId}.mf2
+    	"""
 }
 
 /*
- * Given the blast output execute the 'exonerate' step
+ * == Blast post-process
+ *
+ * Split blastResult to small chunks chunks containing at most 'exonerateChunkSize' lines,
+ * this chunks feed the exonerate step
  */
 
 
+exonerate_in = blastOut.mapMany {  tuple ->
+
+    def specieId = tuple[0] ?.trim()
+    def fileQuery = tuple[1]
+    def fileBlast = tuple[2]
+
+    def result = []
+    fileBlast.chopLines( count: params.exonerateChunkSize ) { chunk ->
+        // emits a tuple containing four entries
+        result << [ specieId, fileQuery, chunk, allGenomes[specieId].chr_db ]
+    }
+
+    result
+}
+
+
+/*
+ * Collect the BLAST output chunks and apply the 'exonerate' function
+ */
+
 process exonerate {
     input:
-    val exonerateId
-    val exonerateQuery
-    file blastResult
+    set ( specieId, 'query_file', 'chunk_file', chr_db ) from exonerate_in
 
     output:
-    file '*.fa' into exonerateOut mode flatten
-    file '*.gtf' into exonerateGtf mode flatten
-    
+    set ( specieId, '*.fa', '*.gtf') into exonerate_out
+
     """
-    specie='${exonerateId}'
-    chr=${allGenomes[exonerateId].chr_db}
     ## apply exonerate
-    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder \$chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
-    if [ ! -s *.fa ]; then exit 0; fi
-
-    ## exonerateRemapping create a file named '*.fa'
-    ## split the exonerate result into single files
-    ${split_cmd} *.fa '%^>%' '/^>/' '{*}' -f .seq_ -n 5
-    mv *.fa .exonerate.fa
-
-    ## rename the seq_xxx files so that the file name match the seq fasta id
-    ## plus append the specie to th sequence id
-    for x in .seq_*; do
-      SEQID=`grep '>' \$x`
-      FILENAME=`grep '>' \$x | ${sed_cmd} -r 's/^>(.*)_hit\\d*.*\$/\\1/'`
-      printf "\${SEQID}_\${specie}\\n" >> \${FILENAME}.fa
-      cat \$x | grep -v '>' >> \${FILENAME}.fa
-    done
-
+    exonerateRemapping.pl -query query_file -mf2 chunk_file -targetGenomeFolder ${chr_db} -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
+    mv chunk_file.fa ${specieId}.fa
+    mv chunk_file.ex.gtf ${specieId}.ex.gtf
     """
 }
 
+/*
+ * post-process 'exonerate' result
+ */
 
+dir = tempDir()
+log.debug "Folder exonerateHits: ${dir}"
+Multiset hitSet = HashMultiset.create()
 
-fastaToMerge = exonerateOut.filter { file -> file.baseName in allQueryIDs  } 
+process normExonerate {
+  maxForks 1
 
-process prepare_mfa {
-	merge true
+  input:
+  set ( specie, fasta, gtf ) from exonerate_out
 
-    input:
-    file fastaToMerge
+  output:
+  val normalizedGtf
+  val normalizedFasta
 
-    output:
-    file '*.mfa' into fastaToAlign mode flatten
+  exec:
+    normalizedFasta = []
+    def replace = []
 
-    """
-    # Extract the file name w/o the extension
-    baseName="${fastaToMerge.baseName}"
+    fasta.chopFasta(record:[id:true, seq:true]) { record ->
 
-    # Only the first time append the query sequence
-    if [ ! -e \$baseName.mfa ]; then
-    perl -n -e '\$on=(/^>('\$baseName')\$/) if (/^>/); print \$_ if (\$on);' $queryFile > \$baseName.mfa
-    fi
+        // parse the sequence id
+        def matcher = (record.id =~ /(.*)_(hit\d*)(.*)/ )
+        def (queryId, hitName, extra) = matcher[0][1..3]
 
-    # Append the exonerate result
-    cat $fastaToMerge >> \$baseName.mfa
-    """
+        // create a multi-fasta file for each 'queryId'
+        if( !allQueryIDs.contains(queryId) ) {
+            println "Skipping queryId: $queryId -- since it's not contained in the source query"
+            return
+        }
+
+        log.debug "Processing queryId: ${queryId}"
+        def file = dir.resolve("${queryId}.mfa")
+        if( !file.exists() ) {
+            // the very fist time prepend the sequence in the query file
+            file = Files.createFile(file)
+            file.text = queryEntries.resolve(queryId).text
+            normalizedFasta << file
+        }
+        // update the hit name
+        def key = [specie, queryId]
+        def count = hitSet.add(key, 1) +1
+        def newHit = "hit$count"
+        if( hitName != newHit ) {
+            log.debug "Replacing hitName: $hitName with: $newHit using key: $key"
+            replace << [queryId: queryId, oldHit: hitName, newHit: newHit ]
+            hitName = newHit
+        }
+
+        // now append the query content
+        file << ">${queryId}_${hitName}${extra}_${specie}\n"
+        file << record.seq
+        file << '\n'
+    }
+
+    if( !replace ) {
+        normalizedGtf = gtf
+        return
+    }
+
+    // normalizing hitNames
+    def str = gtf.text
+    replace?.each {
+        log.debug "Replacing hitName: $it in GTF file: $gtf"
+        def pattern = "hitName \"${it.queryId}_${it.oldHit}\";"
+        str = str.replaceAll( ~/$pattern/, "hitName \"${it.queryId}_${it.newHit}\";" )
+    }
+
+    // creates a new gtf with the same name (in a different directory)
+    normalizedGtf = workDir.resolve gtf.name
+    normalizedGtf.text = str
+
 }
+
+alignFasta = normalizedFasta.flatten()
 
 process align {
     input:
-    file fastaToAlign
+    file alignFasta
 
     output:
     file '*.aln' into alignment
 
     """
-    t_coffee -in $fastaToAlign -method ${params.alignMethod} -n_core 1
+    t_coffee -method ${params.alignStrategy} -in ${alignFasta} -n_core 1
     """
 }
 
+
 process similarity {
     merge true
-    
+
     input:
     file alignment
 
     output:
-    file '*' into similarity 
+    file '*' into similarity
 
     """
     t_coffee -other_pg seq_reformat -in $alignment -output sim > ${alignment.baseName}
@@ -371,23 +446,22 @@ resultDir.with {
     mkdirs()
 }
 
-exonerateGtf.each { file ->
-    if( file.size() == 0 ) return
-    def name = file.name
-    def gtfFileName = resultDir.resolve(name)
-    gtfFileName << file.text
+
+normalizedGtf.each { sourceFile ->
+    if( sourceFile.size() == 0 ) return
+
+    def name = sourceFile.name
+    def targetFile = resultDir.resolve(name)
+    targetFile << sourceFile.text
 }
-
-
 
 /*
  * Compute the similarity Matrix
  */
 process matrix {
     echo true
-    
     input:
-	file similarity
+    file similarity
 
     output:
     file simMatrix
@@ -402,13 +476,15 @@ process matrix {
 }
 
 simMatrixFile = simMatrix.val
-simMatrixFile.copyTo( resultDir )
+simMatrixFile.copyTo( resultDir.resolve('simMatrix.csv') )
+
+
 
 
 // ----==== utility methods ====----
 
 
-def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
+def parseGenomesFile(def dbPath, def sourcePath, String blastStrategy) {
 
     def result = [:]
 
@@ -467,8 +543,8 @@ def parseGenomesFolder(def dbPath, def sourcePath, String blastStrategy) {
 
     def result = [:]
 
-    sourcePath.eachDir { Path path ->
-        def fasta = path.listFiles().find { Path file -> file.name.endsWith('.fa') }
+    sourcePath.eachDir { path ->
+        def fasta = path.listFiles().find { file -> file.name.endsWith('.fa') }
         if( fasta ) {
             result[ path.name ] = [
                     genome_fa: fasta,
