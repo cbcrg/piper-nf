@@ -102,11 +102,11 @@ if( params['genomes-file'] ) {
         exit 1, "Not a valid input genomes descriptor file: ${genomesFile}"
     }
 
-    allGenomes = parseGenomesFile(dbPath, genomesFile, params.blastStrategy)
+    allGenomes = parseGenomesFile(genomesFile)
 }
 
 else if( params['genomes-list'] ) {
-   allGenomes = parseGenomesList(dbPath, params['genomes-list'], params.blastStrategy)
+   allGenomes = parseGenomesList(params['genomes-list'])
 }
 
 else if( params['genomes-folder'] ) {
@@ -115,7 +115,7 @@ else if( params['genomes-folder'] ) {
         exit 4, "Not a valid input genomes folder: ${sourcePath}"
     }
 
-    allGenomes = parseGenomesFolder(dbPath, sourcePath, params.blastStrategy)
+    allGenomes = parseGenomesFolder(sourcePath)
 }
 
 else {
@@ -126,10 +126,10 @@ if( !allGenomes ) {
     exit 6, "No genomes found in path"
 }
 
-allGenomes.each { name, entry ->
-    log.info "Validating genome: $name -- file: ${entry.genome_fa}"
-    if( !entry.genome_fa.exists() ) {
-        exit 3, "Missing genome file: ${entry.genome_fa}"
+allGenomes.each { name, genome_fa ->
+    log.info "Validating genome: $name -- file: ${genome_fa}"
+    if( !genome_fa.exists() ) {
+        exit 3, "Missing genome file: ${genome_fa}"
     }
 }
 
@@ -176,119 +176,125 @@ queryFile.chunkFasta() { String chunk ->
 def sed_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gsed' : 'sed')
 def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'csplit')
 
-fmtBlastParams = Channel
-                        .from(allGenomes.keySet())
-                        .map { specie ->
-                            [ specie, allGenomes[specie].genome_fa, allGenomes[specie].blast_db ]
-                         }
+/*
+ * creates two channels that feed the 'formatBlast' and 'formatChr' processes
+ */
+fmtBlastParams = Channel.create()
+fmtChrParams = Channel.create()
+Channel
+        .from(allGenomes.entrySet())
+        .map { entry -> [ entry.key, entry.value ] }   // <-- return a tuple like (specie, genome_fasta)
+        .tap(fmtChrParams)
+        .into(fmtBlastParams)
 
-fmtChtParams = Channel
-                        .from(allGenomes.keySet())
-                        .map { specie ->
-                            [ specie, allGenomes[specie].genome_fa, allGenomes[specie].chr_db ]
-                         }
-
+/*
+ * Given the genome FASTA file, format to a binary format using the BLAST
+ */
 process formatBlast {
+
+    storeDir dbPath
+
 	input:
-    set (specie, genome_fa, blast_db) from fmtBlastParams
+    set (specie, genome_fa) from fmtBlastParams
 
     output:
-    val specie into fmtBlastOut
+    set (specie, file("$blast_db")) into fmtBlastOut
 
+    script:
+    blast_db = "$specie/${params.blastStrategy}-db"
     """
-    ## Create the BLAST db if they does not exist
-    if [[ ! `ls -A ${blast_db} 2>/dev/null` ]]; then
+    ## Create the target folder
+    mkdir -p $blast_db
 
-        ## Create the target folder
-        mkdir -p ${blast_db}
-
-        ## Format the BLAST DB
-        x-format.sh ${params.blastStrategy} ${genome_fa} ${blast_db}
-    fi
+    ## Format the BLAST DB
+    x-format.sh ${params.blastStrategy} ${genome_fa} ${blast_db}
     """
 }
 
+/*
+ * Given the genome FASTA file splits in a file file for each sequence
+ */
 process formatChr {
+
+    storeDir dbPath
+
 	input:
-    set (specie, genome_fa, chr_db) from fmtChtParams
+    set (specie, genome_fa ) from fmtChrParams
+
     output:
-    val specie into fmtChrOut
+    set (specie, file("$chr_db")) into fmtChrOut
 
+    script:
+    chr_db = "${specie}/chr"
     """
-    ## Create the CHR database if does not exist
-    if [[ ! `ls -A ${chr_db} 2>/dev/null` ]]; then
+    ## split the fasta in a file for each sequence 'seq_*'
+    ${split_cmd} ${genome_fa} '%^>%' '/^>/' '{*}' -f seq_ -n 5
 
-        ## split the fasta in a file for each sequence 'seq_*'
-        ${split_cmd} ${genome_fa} '%^>%' '/^>/' '{*}' -f seq_ -n 5
+    ## create the target folder
+    mkdir -p ${chr_db}
 
-        ## create the target folder
-        mkdir -p ${chr_db}
-
-        ## rename and move to the target folder
-        for x in seq_*; do
-        SEQID=`grep -E "^>" \$x | ${sed_cmd} -r 's/^>(\\S*).*/\\1/'`
-        mv \$x ${chr_db}/\$SEQID;
-        done
-
-    fi
+    ## rename and move to the target folder
+    for x in seq_*; do
+    SEQID=`grep -E "^>" \$x | ${sed_cmd} -r 's/^>(\\S*).*/\\1/'`
+    mv \$x ${chr_db}/\$SEQID;
+    done
     """
 }
-
-blastName = fmtBlastOut.phase(fmtChrOut).map { tuple -> tuple[0] }
 
 
 /*
  * Implements the BLAST step
  */
 
+blast_in = fmtBlastOut.spread( querySplits.listFiles() )
+
 process blast {
     input:
-    each blastId from blastName   
-    file 'blastQuery' from querySplits.listFiles()  
+    set (blastId, file(blast_db), file('blastQuery') ) from blast_in
 
     output:
-    val blastId into exonerateId
-    file 'blastQuery' into exonerateQuery
-    file '*.mf2' into blastResult
-    
-    script: 
-    def db_path = allGenomes[blastId].blast_db
-    
+    set (blastId, 'blastQuery', '*.mf2' ) into blast_result
+
+    script:
+
     if( params.blastStrategy == 'ncbi-blast' )
 
-    	"""
+        """
     	fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-    	blastn -db $db_path/db -query blastQuery -outfmt "\$fmt" > ${blastId}.mf2 
-    	""" 
+    	blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" > ${blastId}.mf2
+    	"""
 
-		
-	else if( params.blastStrategy == 'wu-blast' ) 
-		"""
-    	wu-blastn $db_path/db blastQuery -mformat=2 -e 0.00001 -cpus 1 -filter=seg -lcfilter > ${blastId}.mf2 
-    	""" 
+
+    else if( params.blastStrategy == 'wu-blast' )
+        """
+    	wu-blastn $dblast_db/db blastQuery -mformat=2 -e 0.00001 -cpus 1 -filter=seg -lcfilter > ${blastId}.mf2
+    	"""
 
 }
+
+
+exon_in = fmtChrOut                           // fmtChrOut: emits  (specie, chr_db)
+             .cross( blast_result )         // blast_result: emits (specie, blast_query, blast_hits )
+             .map { chr, blast ->
+                    [ chr[0], chr[1], blast[1], blast[2] ]   // returs ( specie, chr_db, blast_query, blast_hits )
+             }
+
 
 /*
  * Given the blast output execute the 'exonerate' step
  */
 
-
 process exonerate {
     input:
-    val exonerateId
-    val exonerateQuery
-    file blastResult
+    set ( specie, file(chr_db), file(exonerateQuery), file(blastResult) ) from exon_in
 
     output:
     file '*.fa' into exonerateOut mode flatten
     file '*.gtf' into exonerateGtf mode flatten
-    
+
     """
-    specie='${exonerateId}'
-    chr=${allGenomes[exonerateId].chr_db}
     ## apply exonerate
-    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder \$chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
+    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr_db -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
     if [ ! -s *.fa ]; then exit 0; fi
 
     ## exonerateRemapping create a file named '*.fa'
@@ -301,7 +307,7 @@ process exonerate {
     for x in .seq_*; do
       SEQID=`grep '>' \$x`
       FILENAME=`grep '>' \$x | ${sed_cmd} -r 's/^>(.*)_hit\\d*.*\$/\\1/'`
-      printf "\${SEQID}_\${specie}\\n" >> \${FILENAME}.fa
+      printf "\${SEQID}_${specie}\\n" >> \${FILENAME}.fa
       cat \$x | grep -v '>' >> \${FILENAME}.fa
     done
 
@@ -310,10 +316,10 @@ process exonerate {
 
 
 
-fastaToMerge = exonerateOut.filter { file -> file.baseName in allQueryIDs  } 
+fastaToMerge = exonerateOut.filter { file -> file.baseName in allQueryIDs  }
 
 process prepare_mfa {
-	merge true
+    merge true
 
     input:
     file fastaToMerge
@@ -349,12 +355,12 @@ process align {
 
 process similarity {
     merge true
-    
+
     input:
     file alignment
 
     output:
-    file '*' into similarity 
+    file '*' into similarity
 
     """
     t_coffee -other_pg seq_reformat -in $alignment -output sim > ${alignment.baseName}
@@ -385,9 +391,9 @@ exonerateGtf.each { file ->
  */
 process matrix {
     echo true
-    
+
     input:
-	file similarity
+    file similarity
 
     output:
     file simMatrix
@@ -405,10 +411,12 @@ simMatrixFile = simMatrix.val
 simMatrixFile.copyTo( resultDir )
 
 
+
+
 // ----==== utility methods ====----
 
 
-def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
+def parseGenomesFile( sourcePath ) {
 
     def result = [:]
 
@@ -433,11 +441,7 @@ def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
             return
         }
 
-        result[ genomeId ] = [
-                genome_fa: file(path),
-                chr_db: dbPath.resolve("${genomeId}/chr"),
-                blast_db: dbPath.resolve("${genomeId}/${blastStrategy}-db")
-            ]
+        result[ genomeId ] = file(path)
     }
 
     result
@@ -445,36 +449,27 @@ def parseGenomesFile( def dbPath, def sourcePath, String blastStrategy) {
 
 
 
-def parseGenomesList(def dbPath, String genomesList, String blastStrategy) {
+def parseGenomesList(String genomesList) {
 
     def count=0
-    def files = genomesList.split(',').collect { new File(it.trim()).absoluteFile }
+    def files = genomesList.split(',').collect { file(it.trim()) }
     def result = [:]
 
     files.each { genomeFile ->
-
         def genomeId = "gen${++count}"
-        result[ genomeId ] = [
-                genome_fa: genomeFile,
-                chr_db: dbPath.resolve("${genomeId}/chr"),
-                blast_db: dbPath.resolve("${genomeId}/${blastStrategy}-db")
-            ]
+        result[ genomeId ] = genomeFile
     }
     result
 }
 
-def parseGenomesFolder(def dbPath, def sourcePath, String blastStrategy) {
+def parseGenomesFolder(sourcePath) {
 
     def result = [:]
 
-    sourcePath.eachDir { Path path ->
-        def fasta = path.listFiles().find { Path file -> file.name.endsWith('.fa') }
+    sourcePath.eachDir { path ->
+        def fasta = path.listFiles().find { file -> file.name.endsWith('.fa') }
         if( fasta ) {
-            result[ path.name ] = [
-                    genome_fa: fasta,
-                    chr_db: dbPath.resolve("${path.name}/chr"),
-                    blast_db: dbPath.resolve("${path.name}/${blastStrategy}-db")
-                ]
+            result[ path.name ] = fasta
         }
     }
     result
@@ -484,8 +479,7 @@ def parseGenomesFolder(def dbPath, def sourcePath, String blastStrategy) {
 
 def void testParseGenomesFile() {
 
-    def db = new File('db')
-    def source = new File('test-source')
+    def source = file('test-source')
     try {
         source.text =
             '''
@@ -494,21 +488,13 @@ def void testParseGenomesFile() {
             z/file3.fa
             '''
 
-        def result = parseGenomesFile(db, source, 'wu-blast')
+        def result = parseGenomesFile(source)
 
         assert result.size() == 3
 
-        assert result['gen1'].genome_fa == new File('x/file1.fa').absoluteFile
-        assert result['genx'].genome_fa == new File('y/file2.fa').absoluteFile
-        assert result['gen3'].genome_fa == new File('z/file3.fa').absoluteFile
-
-        assert result['gen1'].chr_db == new File(db, 'gen1/chr').absoluteFile
-        assert result['genx'].chr_db == new File(db, 'genx/chr').absoluteFile
-        assert result['gen3'].chr_db == new File(db, 'gen3/chr').absoluteFile
-
-        assert result['gen1'].blast_db == new File(db, 'gen1/wu-blast-db').absoluteFile
-        assert result['genx'].blast_db == new File(db, 'genx/wu-blast-db').absoluteFile
-        assert result['gen3'].blast_db == new File(db, 'gen3/wu-blast-db').absoluteFile
+        assert result['gen1'] == file('x/file1.fa')
+        assert result['genx'] == file('y/file2.fa')
+        assert result['gen3'] == file('z/file3.fa')
 
     }
     finally {
@@ -520,64 +506,46 @@ def void testParseGenomesFile() {
 
 def void testParseGenomesList() {
 
-      def db = new File('db')
+      def db = file('db')
 
       // call the function to test
-      def result = parseGenomesList(db, 'alpha.fa, beta.fa, delta.fa', 'x-blast')
+      def result = parseGenomesList('alpha.fa, beta.fa, delta.fa')
 
       // verify result
       assert result.size() == 3
 
-      assert result['gen1'].genome_fa == new File('alpha.fa').absoluteFile
-      assert result['gen2'].genome_fa == new File('beta.fa').absoluteFile
-      assert result['gen3'].genome_fa == new File('delta.fa').absoluteFile
-
-      assert result['gen1'].chr_db == new File(db, 'gen1/chr') .absoluteFile
-      assert result['gen2'].chr_db == new File(db, 'gen2/chr') .absoluteFile
-      assert result['gen3'].chr_db == new File(db, 'gen3/chr') .absoluteFile
-
-      assert result['gen1'].blast_db == new File(db, 'gen1/x-blast-db') .absoluteFile
-      assert result['gen2'].blast_db == new File(db, 'gen2/x-blast-db') .absoluteFile
-      assert result['gen3'].blast_db == new File(db, 'gen3/x-blast-db') .absoluteFile
+      assert result['gen1'] == file('alpha.fa')
+      assert result['gen2'] == file('beta.fa')
+      assert result['gen3'] == file('delta.fa')
 
 }
 
 def void testParseGenomesFolder() {
 
-  def root = new File('test-folder')
+  def root = file('test-folder')
 
   try {
       // create the structure to test
-      def folder1 = new File(root, 'alpha')
-      def folder2 = new File(root, 'beta')
-      def folder3 = new File(root, 'delta')
+      def folder1 = root.resolve('alpha')
+      def folder2 = root.resolve('beta')
+      def folder3 = root.resolve('delta')
       folder1.mkdirs()
       folder2.mkdirs()
       folder3.mkdirs()
 
-      new File(folder1, 'gen1.fa').text = 'uno'
-      new File(folder2, 'gen2.fa').text = 'due'
-      new File(folder3, 'gen3.fa').text = 'tre'
-
-      def db = new File('db')
+      folder1.resolve('gen1.fa').text = 'uno'
+      folder2.resolve('gen2.fa').text = 'due'
+      folder3.resolve('gen3.fa').text = 'tre'
 
       // call the function to test
-      def result = parseGenomesFolder(db, root, 'y-blast')
+      def result = parseGenomesFolder(root)
 
       // verify result
       assert result.size() == 3
 
-      assert result['alpha'].genome_fa == new File(folder1, 'gen1.fa').absoluteFile
-      assert result['beta'].genome_fa == new File(folder2, 'gen2.fa').absoluteFile
-      assert result['delta'].genome_fa == new File(folder3, 'gen3.fa').absoluteFile
-
-      assert result['alpha'].chr_db == new File(db, 'alpha/chr') .absoluteFile
-      assert result['beta'].chr_db == new File(db, 'beta/chr') .absoluteFile
-      assert result['delta'].chr_db == new File(db, 'delta/chr') .absoluteFile
-
-      assert result['alpha'].blast_db == new File(db, 'alpha/y-blast-db') .absoluteFile
-      assert result['beta'].blast_db == new File(db, 'beta/y-blast-db') .absoluteFile
-      assert result['delta'].blast_db == new File(db, 'delta/y-blast-db') .absoluteFile
+      assert result['alpha'] == folder1.resolve('gen1.fa')
+      assert result['beta'] == folder2.resolve('gen2.fa')
+      assert result['delta'] == folder3.resolve('gen3.fa')
 
   }
   finally {
