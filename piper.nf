@@ -396,7 +396,7 @@ process matrix {
     file similarity
 
     output:
-    file simMatrix
+    file 'simMatrix'
 
     """
     echo '\n====== Pipe-R sim matrix ======='
@@ -407,9 +407,9 @@ process matrix {
     """
 }
 
-simMatrixFile = simMatrix.val
-simMatrixFile.copyTo( resultDir )
-
+simMatrix.subscribe { file ->
+    file.copyTo( resultDir )
+}
 
 
 
