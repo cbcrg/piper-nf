@@ -229,7 +229,7 @@ process formatBlast {
 
     storeDir dbPath
 
-	input:
+    input:
     set (specie, genome_fa) from fmtBlastParams
 
     output:
@@ -258,7 +258,7 @@ process formatChr {
 
     storeDir dbPath
 
-	input:
+    input:
     set (specie, genome_fa ) from fmtChrParams
 
     output:
@@ -307,7 +307,7 @@ process blast {
 
     else if( params.blastStrategy == 'wu-blast' )
         """
-    	wu-blastn $dblast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter > ${blastId}.mf2
+    	wu-blastn $blast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter > ${blastId}.mf2
     	"""
 
 }
