@@ -52,7 +52,7 @@ params.alignStrategy = 'slow_pair'      // defines the T-Coffee alignment method
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
 params.exonerateChunkSize = 200
-
+params.repeatCov = 20
 
 // these parameters are mutually exclusive
 // Input genome can be specified by
@@ -84,6 +84,7 @@ log.info "align-strategy      : ${params.alignStrategy}"
 log.info "exonerate-success:  : ${params.exonerateSuccess}"
 log.info "exonerate-mode:     : ${params.exonerateMode}"
 log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
+log.info "repeat-cov          : ${params.repeatCov}"
 log.info "pool-size           : ${config.poolSize}"
 log.info "\n"
 
@@ -308,8 +309,11 @@ process exonerate {
     ## apply exonerate
     exonerateRemapping.pl -query ${exonerate_in.query} -mf2 ${exonerate_in.chunk} -targetGenomeFolder \$chr -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
 
-    mv chunk.fa \${specie}.fa
-    mv chunk.ex.gtf \${specie}.ex.gtf
+    repeat.pl chunk.fa chunk.ex.gtf ${params.repeatCov}
+    mv chunk.fa chunk.seq
+    mv chunk.ex.gtf chunk.ex.annot
+    mv rep${params.repeatCov}.fa \${specie}.fa
+    mv rep${params.repeatCov}.ex.gtf \${specie}.ex.gtf
     """
 }
 
