@@ -18,6 +18,14 @@
  */
 
 
+import groovyx.gpars.dataflow.operator.DataflowEventAdapter
+import groovyx.gpars.dataflow.operator.DataflowProcessor
+import com.google.common.collect.Multiset
+import com.google.common.collect.HashMultiset
+import nextflow.util.CacheHelper
+import java.nio.file.Files
+
+
 /* 
  * Main Piper-NF pipeline script
  *
@@ -40,9 +48,11 @@ params.query = 'tutorial/5_RNA_queries.fa'
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
+params.alignStrategy = 'slow_pair'      // defines the T-Coffee alignment method
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
-params.alignMethod = 'slow_pair'
+params.exonerateChunkSize = 200
+params.cpus = 1
 
 
 // these parameters are mutually exclusive
@@ -64,17 +74,29 @@ if( !dbPath.exists() ) {
     }
 }
 
-log.info "P I P E R - RNA mapping pipeline"
-log.info "================================"
-log.info "query              : ${queryFile}"
-log.info "genomes-db         : ${dbPath}"
-log.info "query-chunk-size   : ${params.queryChunkSize}"
-log.info "result-dir         : ${params.resultDir}"
-log.info "blast-strategy     : ${params.blastStrategy}"
-log.info "exonerate-success  : ${params.exonerateSuccess}"
-log.info "exonerate-mode     : ${params.exonerateMode}"
-log.info "align-method       : ${params.alignMethod}"
-log.info "pool-size          : ${config.poolSize}"
+/*
+ * Verify that user has specified a valid BLAST strategy parameter
+ */
+assert params.blastStrategy in ['ncbi-blast','wu-blast']
+assert params.cpus > 0
+
+/*
+ * dump some info
+ */
+
+log.info "P I P E R - RNA mapping pipeline - ver 1.2"
+log.info "=========================================="
+log.info "query               : ${queryFile}"
+log.info "genomes-db          : ${dbPath}"
+log.info "query-chunk-size    : ${params.queryChunkSize}"
+log.info "result-dir          : ${params.resultDir}"
+log.info "blast-strategy      : ${params.blastStrategy}"
+log.info "align-strategy      : ${params.alignStrategy}"
+log.info "exonerate-success:  : ${params.exonerateSuccess}"
+log.info "exonerate-mode:     : ${params.exonerateMode}"
+log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
+log.info "cpus                : ${params.cpus}"
+log.info "pool-size           : ${config.poolSize}"
 log.info "\n"
 
 /*
@@ -159,9 +181,22 @@ else {
 }
 
 
-allQueryIDs = []
+// use a set since there should be not repetition
+allQueryIDs = new HashSet()
+
+queryEntries = cacheableDir(queryFile)
+log.debug "Queries entries path: $queryEntries"
+
 queryFile.chunkFasta() { String chunk ->
-    allQueryIDs << chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
+    String queryId = chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
+    log.debug "Query entry id: $queryId"
+
+    allQueryIDs << queryId
+    // store the chunk to a file named as the 'queryId'
+    def fileEntry = queryEntries.resolve(queryId)
+    if( fileEntry.empty() ) {
+        fileEntry.text = chunk
+    }
 }
 
 /*
@@ -170,25 +205,25 @@ queryFile.chunkFasta() { String chunk ->
  * This task is executed for each genome in the list 'formatName'
  * The tasks 'sends' out the name of the genome to be processed
  * by the next step in the pipeline using the variable 'blastName'
+ *
  */
-
 
 def sed_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gsed' : 'sed')
 def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'csplit')
 
 /*
- * creates two channels that feed the 'formatBlast' and 'formatChr' processes
+ * Creates two channels that feed the 'formatBlast' and 'formatChr' processes.
+ * Both of there emits tuples like (specie, genome fasta file)
  */
 fmtBlastParams = Channel.create()
 fmtChrParams = Channel.create()
 Channel
         .from(allGenomes.entrySet())
-        .map { entry -> [ entry.key, entry.value ] }   // <-- return a tuple like (specie, genome_fasta)
-        .tap(fmtChrParams)
-        .into(fmtBlastParams)
+        .map { entry -> [ entry.key, entry.value ] }
+        .split( fmtChrParams, fmtBlastParams )
 
 /*
- * Given the genome FASTA file, format to a binary format using the BLAST
+ * Given the genome FASTA file, format it to the BLAST binary format
  */
 process formatBlast {
 
@@ -202,17 +237,22 @@ process formatBlast {
 
     script:
     blast_db = "$specie/${params.blastStrategy}-db"
-    """
-    ## Create the target folder
-    mkdir -p $blast_db
 
-    ## Format the BLAST DB
-    x-format.sh ${params.blastStrategy} ${genome_fa} ${blast_db}
+    if( params.blastStrategy == 'ncbi-blast' )
+    """
+    mkdir -p $blast_db
+    makeblastdb -dbtype nucl -in ${genome_fa} -out $blast_db/db
+    """
+
+    else if( params.blastStrategy == 'wu-blast' )
+    """
+    mkdir -p $blast_db
+    xdformat -n -o ${blast_db}/db ${genome_fa}
     """
 }
 
 /*
- * Given the genome FASTA file splits in a file file for each sequence
+ * Given the genome FASTA file splits in a file for each sequence
  */
 process formatChr {
 
@@ -261,98 +301,179 @@ process blast {
 
         """
     	fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-    	blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" > ${blastId}.mf2
+    	blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" -num_threads ${params.cpus} > ${blastId}.mf2
     	"""
 
 
     else if( params.blastStrategy == 'wu-blast' )
         """
-    	wu-blastn $dblast_db/db blastQuery -mformat=2 -e 0.00001 -cpus 1 -filter=seg -lcfilter > ${blastId}.mf2
+    	wu-blastn $dblast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter > ${blastId}.mf2
     	"""
 
 }
 
 
-exon_in = fmtChrOut                           // fmtChrOut: emits  (specie, chr_db)
-             .cross( blast_result )         // blast_result: emits (specie, blast_query, blast_hits )
-             .map { chr, blast ->
-                    [ chr[0], chr[1], blast[1], blast[2] ]   // returs ( specie, chr_db, blast_query, blast_hits )
-             }
+/*
+ * Join together the output of 'formatChr' step with the 'blast' step
+ *
+ * Channel 'fmtChrOut' emits tuples with these elements (specie, chr_db)
+ * Channel 'blast_result' emits tuples with these elements ( specie, blast_query, blast_hits )
+ *
+ * Finally, the channel 'exonerate_in' emits ( specie, chr_db, blast_query, blast_hits )
+ */
+exonerate_in = fmtChrOut
+                 .cross( blast_result )
+                 .map { chr, blast ->
+                        [ chr[0], chr[1], blast[1], blast[2] ]
+                      }
 
 
 /*
- * Given the blast output execute the 'exonerate' step
+ * Collect the BLAST output chunks and apply the 'exonerate' function
  */
 
 process exonerate {
     input:
-    set ( specie, file(chr_db), file(exonerateQuery), file(blastResult) ) from exon_in
+    set ( specie, file(chr_db), file(exonerateQuery), file(blastResult) ) from exonerate_in
 
     output:
-    file '*.fa' into exonerateOut mode flatten
-    file '*.gtf' into exonerateGtf mode flatten
+    set ( specie, '*.fa', '*.gtf') into exonerate_out
 
     """
-    ## apply exonerate
-    exonerateRemapping.pl -query ${exonerateQuery} -mf2 $blastResult -targetGenomeFolder $chr_db -exonerate_lines_mode ${params.exonerateMode} -exonerate_success_mode ${params.exonerateMode} -ner no
-    if [ ! -s *.fa ]; then exit 0; fi
-
-    ## exonerateRemapping create a file named '*.fa'
-    ## split the exonerate result into single files
-    ${split_cmd} *.fa '%^>%' '/^>/' '{*}' -f .seq_ -n 5
-    mv *.fa .exonerate.fa
-
-    ## rename the seq_xxx files so that the file name match the seq fasta id
-    ## plus append the specie to th sequence id
-    for x in .seq_*; do
-      SEQID=`grep '>' \$x`
-      FILENAME=`grep '>' \$x | ${sed_cmd} -r 's/^>(.*)_hit\\d*.*\$/\\1/'`
-      printf "\${SEQID}_${specie}\\n" >> \${FILENAME}.fa
-      cat \$x | grep -v '>' >> \${FILENAME}.fa
-    done
-
+    exonerateRemapping.pl \
+        -query ${exonerateQuery} \
+        -mf2 ${blastResult} \
+        -targetGenomeFolder ${chr_db} \
+        -exonerate_lines_mode ${params.exonerateMode} \
+        -exonerate_success_mode ${params.exonerateMode} \
+        -ner no
     """
 }
 
+/*
+ * Post-process 'exonerate' result
+ *
+ * It collects all the fasta and gtf files produced by the 'exonerate' step and the 'hitxx' suffix
+ * in such a way that the 'xx' number is unique across the same specie and queryId
+ *
+ */
 
+Multiset hitSet = HashMultiset.create()
 
-fastaToMerge = exonerateOut.filter { file -> file.baseName in allQueryIDs  }
+process normExonerate {
 
-process prepare_mfa {
-    merge true
+  input:
+  set ( specie, fasta, gtf ) from exonerate_out
 
-    input:
-    file fastaToMerge
+  output:
+  val normalizedGtf
+  val normalizedFasta
 
-    output:
-    file '*.mfa' into fastaToAlign mode flatten
+  exec:
+    def replace = []
+    normalizedFasta = []
 
-    """
-    # Extract the file name w/o the extension
-    baseName="${fastaToMerge.baseName}"
+    fasta.chopFasta(record:[id:true, seq:true]) { record ->
 
-    # Only the first time append the query sequence
-    if [ ! -e \$baseName.mfa ]; then
-    perl -n -e '\$on=(/^>('\$baseName')\$/) if (/^>/); print \$_ if (\$on);' $queryFile > \$baseName.mfa
-    fi
+        // parse the sequence id
+        def matcher = (record.id =~ /(.*)_(hit\d*)(.*)/ )
+        def (queryId, hitName, extra) = matcher[0][1..3]
 
-    # Append the exonerate result
-    cat $fastaToMerge >> \$baseName.mfa
-    """
+        // create a multi-fasta file for each 'queryId'
+        if( !allQueryIDs.contains(queryId) ) {
+            println "Skipping queryId: $queryId -- since it's not contained in the source query"
+            return
+        }
+
+        log.debug "normExonerate > Processing queryId: ${queryId}"
+
+        // update the hit name
+        def key = [specie, queryId]
+        def count = hitSet.add(key, 1) +1
+        def newHit = "hit$count"
+        if( hitName != newHit ) {
+            log.debug "Replacing hitName: $hitName with: $newHit using key: $key"
+            replace << [queryId: queryId, oldHit: hitName, newHit: newHit ]
+            hitName = newHit
+        }
+
+        // now append the query content
+        def item = ''
+        item += ">${queryId}_${hitName}${extra}_${specie}\n"
+        item += record.seq
+        item += '\n'
+
+        normalizedFasta << [ queryId, item ]
+
+    }
+
+    if( !replace ) {
+        normalizedGtf = gtf
+        return
+    }
+
+    // normalizing hitNames
+    def str = gtf.text
+    replace?.each {
+        log.debug "normExonerate > Replacing hitName: $it in GTF file: $gtf"
+        def pattern = "hitName \"${it.queryId}_${it.oldHit}\";"
+        str = str.replaceAll( ~/$pattern/, "hitName \"${it.queryId}_${it.newHit}\";" )
+    }
+
+    // creates a new gtf with the same name (in a different directory)
+    normalizedGtf = workDir.resolve(gtf.name)
+    normalizedGtf.text = str
+
 }
+
+/*
+ *  Groups together all the sequences (in the fasta file) output by exonerate that has the same 'queryId'
+ *  and save them in a file having the name $queryId.mfa
+ *
+ *  All of them are stores in the cacheable path 'fastaCacheDir'
+ *
+ */
+fastaCacheDir = cacheableDir( [queryFile, allGenomes ] )
+
+alignFasta = normalizedFasta
+                .flatMap { it }
+                .reduce([:]) { map, tuple -> // tuple = ( queryId, sequence )
+                        def queryId = tuple[0]
+                        def sequence = tuple[1]
+                        def seqFile = map[queryId]
+                        if( seqFile == null ) {
+                            seqFile = fastaCacheDir.resolve("${queryId}.mfa");
+                            if( seqFile.exists() ) seqFile.delete()
+                            seqFile << queryEntries.resolve(queryId).text
+                            map[queryId] = seqFile
+                        }
+                        seqFile << sequence
+                        return map
+                    }
+                .flatMap() { it.values() }
+
+
+/*
+ * Aligns the the query sequence with hit sequences returned by exonerate
+ */
 
 process align {
+    cache 'deep'
+
     input:
-    file fastaToAlign
+    file seqs from alignFasta
 
     output:
     file '*.aln' into alignment
 
     """
-    t_coffee -in $fastaToAlign -method ${params.alignMethod} -n_core 1
+    t_coffee -in ${seqs} -method ${params.alignStrategy} -n_core ${params.cpus}
     """
 }
 
+/*
+ * Calculate the similarity
+ */
 process similarity {
     merge true
 
@@ -368,8 +489,8 @@ process similarity {
 }
 
 /*
- * Copy the GFT files produces by the Exonerate steps into the result (current) folder
- */
+* Copy the GFT files produces by the Exonerate steps into the result (current) folder
+*/
 
 resultDir = file(params.resultDir)
 resultDir.with {
@@ -377,18 +498,18 @@ resultDir.with {
     mkdirs()
 }
 
-exonerateGtf.each { file ->
-    if( file.size() == 0 ) return
-    def name = file.name
-    def gtfFileName = resultDir.resolve(name)
-    gtfFileName << file.text
+
+normalizedGtf.each { sourceFile ->
+    if( sourceFile.size() == 0 ) return
+
+    def name = sourceFile.name
+    def targetFile = resultDir.resolve(name)
+    targetFile << sourceFile.text
 }
 
-
-
 /*
- * Compute the similarity Matrix
- */
+* Compute the similarity Matrix
+*/
 process matrix {
     echo true
 
@@ -408,7 +529,7 @@ process matrix {
 }
 
 simMatrix.subscribe { file ->
-    file.copyTo( resultDir )
+    file.copyTo( resultDir.resolve('simMatrix.csv') )
 }
 
 
