@@ -200,7 +200,7 @@ queryFile.chunkFasta() { String chunk ->
 }
 
 /*
- * Create the required databases (BLAST,CHR) if they does not exists.
+ * Create the required databases (BLAST,CHR) if they do not exists.
  *
  * This task is executed for each genome in the list 'formatName'
  * The tasks 'sends' out the name of the genome to be processed
