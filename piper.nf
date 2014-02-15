@@ -52,6 +52,7 @@ params.alignStrategy = 'slow_pair'      // defines the T-Coffee alignment method
 params.exonerateSuccess = '1'
 params.exonerateMode = 'exhaustive'
 params.exonerateChunkSize = 200
+params.repeatCov = 20
 params.cpus = 1
 
 
@@ -95,6 +96,7 @@ log.info "align-strategy      : ${params.alignStrategy}"
 log.info "exonerate-success:  : ${params.exonerateSuccess}"
 log.info "exonerate-mode:     : ${params.exonerateMode}"
 log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
+log.info "repeat-cov          : ${params.repeatCov}"
 log.info "cpus                : ${params.cpus}"
 log.info "pool-size           : ${config.poolSize}"
 log.info "\n"
@@ -347,6 +349,12 @@ process exonerate {
         -exonerate_lines_mode ${params.exonerateMode} \
         -exonerate_success_mode ${params.exonerateMode} \
         -ner no
+
+    repeat.pl ${specie}.fa ${specie}.ex.gtf ${params.repeatCov}
+    mv ${specie}.fa chunk.seq
+    mv ${specie}.ex.gtf chunk.ex.annot
+    mv rep${params.repeatCov}.fa ${specie}.fa
+    mv rep${params.repeatCov}.ex.gtf ${specie}.ex.gtf
     """
 }
 
