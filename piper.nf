@@ -350,7 +350,7 @@ process exonerate {
         -exonerate_success_mode ${params.exonerateMode} \
         -ner no
 
-    if [ ! -s ${specie}.fa ]; then
+    if [ -s ${specie}.fa ]; then
       repeat.pl ${specie}.fa ${specie}.ex.gtf ${params.repeatCov}
       mv ${specie}.fa chunk.seq
       mv ${specie}.ex.gtf chunk.ex.annot
