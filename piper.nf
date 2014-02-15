@@ -434,6 +434,7 @@ process normExonerate {
  *
  */
 fastaCacheDir = cacheableDir( [queryFile, allGenomes ] )
+log.debug "fastaCacheDir > $fastaCacheDir"
 
 alignFasta = normalizedFasta
                 .flatMap { it }
