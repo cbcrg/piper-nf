@@ -5,7 +5,7 @@ MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
 RUN yum install -q -y which wget nano make gcc g++ gcc-gfortran expat-devel perl-CPAN perl-Net-SSLeay perl-IO-Socket-SSL openssl-devel unzip; \
   wget -q -O cpanm http://cpanmin.us; \
   chmod +x cpanm && mv cpanm bin/; \
-  cpanm -q -n Net::SSLeay XML::Simple SOAP::Lite
+  cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite
   
 #
 # RUN wget -q --no-check-certificate --no-cookies - --header "Cookie: oraclelicense=accept-securebackup-cookie"  \
