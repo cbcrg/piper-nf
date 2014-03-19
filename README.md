@@ -125,6 +125,24 @@ synchronisation, file(s) staging/un-staging, etc.
 
 Alternatively the same declaration can be defined in the file `$HOME/.nextflow/config`.
 
+
+Run in the OSDC platform
+-------------------------------
+
+Piper can be executed in the  [Open Science Data Cloud](https://www.opensciencedatacloud.org) platform.
+
+Launch instances of type `cbcrg_v.1.2`. One of the need to be used as *master* node i.e. where the 
+application will be started, the remaining nodes will run the pipelines tasks. 
+
+The *master* and *executor* nodes have to be instantiated separately. 
+
+When launching the *executor* nodes specify the following code in the *Customization Script* field 
+in order to configure the cluster:
+    
+    #!/bin/bash
+    curl https://raw.github.com/cbcrg/piper-nf/master/cloud-boot.sh | bash 
+
+
 Dependencies
 ------------
  
