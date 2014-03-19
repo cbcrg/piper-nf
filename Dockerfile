@@ -36,12 +36,10 @@ RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subse
 #
 # T-Coffee 
 #
-RUN  VER='Version_10.00.ca81f2f'; \
-  wget -q http://www.tcoffee.org/Packages/Beta/${VER}/linux/T-COFFEE_installer_${VER}_linux_x64.bin; \
-  chmod +x T-COFFEE_*; \
-  ./T-COFFEE_installer_${VER}_linux_x64.bin --mode unattended --user_email tcoffee.msa@gmail.com --installdir /opt/tcoffee; \
-  rm -rf T-COFFEE_*; \
-  rm -rf .bash*; 
+RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz; \
+  tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt; \
+  rm -rf tcoffee-Version_10.00.r1613.tar.gz
+
 
 #
 # Add local scripts
@@ -61,4 +59,4 @@ ENV EMAIL_4_TCOFFEE tcoffee.msa@gmail.com
 ENV LOCKDIR_4_TCOFFEE /opt/tcoffee/lck/
 ENV TMP_4_TCOFFEE /opt/tcoffee/tmp/
 
-
+RUN chown -R root:root /opt/*; chown -R root:root /usr/local/bin/*
