@@ -131,8 +131,8 @@ Run in the OSDC platform
 
 Piper can be executed in the  [Open Science Data Cloud](https://www.opensciencedatacloud.org) platform.
 
-Launch instances of type `cbcrg_v.1.2`. One of the need to be used as *master* node i.e. where the 
-application will be started, the remaining nodes will run the pipelines tasks. 
+Launch instances of type `cbcrg_v.1.2`. One of them need will used as *master* node i.e. where the 
+application will be started, the remaining nodes will run the pipeline tasks. 
 
 The *master* and *executor* nodes have to be instantiated separately. 
 
