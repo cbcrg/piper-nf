@@ -29,18 +29,19 @@ RUN wget -q ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blas
     ln -s /opt/ncbi-blast-2.2.29+/ /opt/blast;
 
 #
-# T-Coffee + chr_subseq
-#
-RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subseq; \
-  chmod +x /bin/chr_subseq; \
-  wget -q http://www.tcoffee.org/Packages/Stable/Version_10.00.r1613/linux/T-COFFEE_installer_Version_10.00.r1613_linux_x64.bin; \
-  chmod +x T-COFFEE_*; \
-  ./T-COFFEE_installer_Version_10.00.r1613_linux_x64.bin --mode unattended --user_email tcoffee.msa@gmail.com --installdir /opt/tcoffee; \
-  rm -rf T-COFFEE_*; \
-  rm -rf .bash*; \
-  ln -s /opt/exonerate-2.2.0-x86_64/ /opt/exonerate; \
-  ln -s /opt/ncbi-blast-2.2.29+/ /opt/blast;
+# CHR_SUBSEQ
+# 
+RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subseq; chmod +x /bin/chr_subseq; 
 
+#
+# T-Coffee 
+#
+RUN  VER='Version_10.00.ca81f2f'; \
+  wget -q http://www.tcoffee.org/Packages/Beta/${VER}/linux/T-COFFEE_installer_${VER}_linux_x64.bin; \
+  chmod +x T-COFFEE_*; \
+  ./T-COFFEE_installer_${VER}_linux_x64.bin --mode unattended --user_email tcoffee.msa@gmail.com --installdir /opt/tcoffee; \
+  rm -rf T-COFFEE_*; \
+  rm -rf .bash*; 
 
 #
 # Add local scripts
