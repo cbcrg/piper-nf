@@ -11,4 +11,4 @@ curl -L -s get.nextflow.io | bash
 
 # Save this node IP address to a shared file 
 
-ifconfig eth0 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}' >> REPO/nodes.txt
+ifconfig eth0 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}' >> $REPO/nodes.txt
