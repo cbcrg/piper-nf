@@ -4,10 +4,10 @@ REPO=/glusterfs/users/tcoffee/piper-nf/
 # Load the PIPE-R image
 docker pull cbcrg/piper-nf
 
-# Copy Nextflow and launch the daemon
-cp $REPO/nextflow $HOME
-chmod +x $HOME/nextflow
-nohup $HOME/nextflow -daemon.interface eth0 &> $HOME/log & 
+# Install NEXTFLOW and launch it 
+export NXF_PACK='hz'
+curl -L -s get.nextflow.io | bash
+./nextflow -d -daemon.interface eth0  
 
 # Save this node IP address to a shared file 
 
