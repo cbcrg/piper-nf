@@ -6,9 +6,9 @@ docker pull cbcrg/piper-nf
 
 # Install NEXTFLOW and launch it 
 export NXF_PACK='hz'
-curl -L -s get.nextflow.io | bash
+wget -q -O - http://get.nextflow.io | bash -x
 ./nextflow -d -daemon.interface eth0  
 
 # Save this node IP address to a shared file 
 
-ifconfig eth0 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}' >> REPO/nodes.txt
+ifconfig eth0 | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}' >> $REPO/nodes.txt
