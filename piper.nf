@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Centre for Genomic Regulation (CRG) and the authors.
+ * Copyright (c) 2013-2014, Centre for Genomic Regulation (CRG) and the authors.
  *
  *   This file is part of 'Piper-NF'.
  *
@@ -302,15 +302,15 @@ process blast {
     if( params.blastStrategy == 'ncbi-blast' )
 
         """
-    	fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-    	blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" -num_threads ${params.cpus} > ${blastId}.mf2
-    	"""
+        fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
+        blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" -num_threads ${params.cpus} > ${blastId}.mf2
+        """
 
 
     else if( params.blastStrategy == 'wu-blast' )
         """
-    	wu-blastn $blast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter > ${blastId}.mf2
-    	"""
+        wu-blastn $blast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter -errors -novalidctxok -nonnegok > ${blastId}.mf2
+        """
 
 }
 
@@ -352,6 +352,7 @@ process exonerate {
 
     if [ -s ${specie}.fa ]; then
       repeat.pl ${specie}.fa ${specie}.ex.gtf ${params.repeatCov}
+      [[ ! -s rep${params.repeatCov}.fa ]] && exit 0
       mv ${specie}.fa chunk.seq
       mv ${specie}.ex.gtf chunk.ex.annot
       mv rep${params.repeatCov}.fa ${specie}.fa
