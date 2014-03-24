@@ -232,7 +232,7 @@ process formatBlast {
     storeDir dbPath
 
     input:
-    set (specie, genome_fa) from fmtBlastParams
+    set (specie, file(genome_fa)) from fmtBlastParams
 
     output:
     set (specie, file("$blast_db")) into fmtBlastOut
@@ -261,7 +261,7 @@ process formatChr {
     storeDir dbPath
 
     input:
-    set (specie, genome_fa ) from fmtChrParams
+    set (specie, file(genome_fa)) from fmtChrParams
 
     output:
     set (specie, file("$chr_db")) into fmtChrOut

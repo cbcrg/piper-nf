@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-REPO=/glusterfs/users/tcoffee/piper-nf/
+set -e
+REPO='/glusterfs/users/tcoffee/piper-nf/'
 
 # Load the PIPE-R image
 docker pull cbcrg/piper-nf
 
 # Install NEXTFLOW and launch it 
-export NXF_PACK='hz'
-wget -q -O - http://get.nextflow.io | bash -x
+wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
 ./nextflow -d -daemon.interface eth0  
 
 # Save this node IP address to a shared file 
