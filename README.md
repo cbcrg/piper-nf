@@ -140,7 +140,7 @@ When launching the *executor* nodes specify the following code in the *Customiza
 in order to configure the cluster:
     
     #!/bin/bash
-    curl https://raw.github.com/cbcrg/piper-nf/master/cloud-boot.sh | bash 
+    curl -fsSL https://raw.github.com/cbcrg/piper-nf/master/cloud-boot.sh | bash 
 
 
 Dependencies
