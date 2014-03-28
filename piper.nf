@@ -314,6 +314,15 @@ process blast {
 
 }
 
+/*
+ * Split the blast result in chunk of at most *params.exonerateChunkSize* lines
+ */
+
+blast_chunks = blast_result.flatMap { id, query, result ->
+
+    result.chopLines( into:[], count: params.exonerateChunkSize ).collect { chunk -> [id, query, chunk] }
+
+}
 
 /*
  * Join together the output of 'formatChr' step with the 'blast' step
@@ -323,8 +332,9 @@ process blast {
  *
  * Finally, the channel 'exonerate_in' emits ( specie, chr_db, blast_query, blast_hits )
  */
+
 exonerate_in = fmtChrOut
-                 .cross( blast_result )
+                 .cross( blast_chunks )
                  .map { chr, blast ->
                         [ chr[0], chr[1], blast[1], blast[2] ]
                       }
