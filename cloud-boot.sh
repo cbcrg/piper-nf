@@ -18,7 +18,7 @@ docker pull cbcrg/piper-nf
 
 # Install NEXTFLOW and launch it 
 wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
-./nextflow -d -daemon.interface eth0  
+./nextflow -bg -daemon.interface eth0 
 
 # save the environment for debugging 
 env | sort > .boot.env
