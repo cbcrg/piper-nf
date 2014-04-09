@@ -24,7 +24,8 @@ wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
   -daemon.tcp.heartbeatFrequency 3s \
   -daemon.tcp.maxMissedHeartbeats 3 \
   -daemon.tcp.reconnectCount 15 \
-  -daemon.tcp.networkTimeout 10s 
+  -daemon.tcp.networkTimeout 10s \
+  -daemon.join file:/glusterfs/users/tcoffee/piper-nf/cluster/
   
 
 # save the environment for debugging 
