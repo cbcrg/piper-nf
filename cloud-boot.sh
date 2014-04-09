@@ -18,7 +18,14 @@ docker pull cbcrg/piper-nf
 
 # Install NEXTFLOW and launch it 
 wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
-./nextflow -bg -daemon.interface eth0 
+./nextflow -bg \
+  -daemon.interface eth0 \
+  -daemon.tcp.socketTimeout 35s \
+  -daemon.tcp.heartbeatFrequency 3s \
+  -daemon.tcp.maxMissedHeartbeats 3 \
+  -daemon.tcp.reconnectCount 15 \
+  -daemon.tcp.networkTimeout 10s 
+  
 
 # save the environment for debugging 
 env | sort > .boot.env
