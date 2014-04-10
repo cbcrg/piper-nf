@@ -21,12 +21,12 @@ export NXF_VER=0.7.1
 wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
 ./nextflow -bg \
   -daemon.interface eth0 \
-  -daemon.tcp.socketTimeout 90s \
+  -daemon.tcp.socketTimeout 120s \
   -daemon.tcp.heartbeatFrequency 5s \
   -daemon.tcp.maxMissedHeartbeats 5 \
   -daemon.tcp.reconnectCount 15 \
   -daemon.tcp.networkTimeout 30s \
-  -daemon.tcp.ackTimeout 15s \
+  -daemon.tcp.ackTimeout 30s \
   -daemon.join file:/glusterfs/users/tcoffee/piper-nf/cluster/
   
 
