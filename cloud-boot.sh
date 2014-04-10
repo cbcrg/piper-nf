@@ -17,14 +17,16 @@ done
 docker pull cbcrg/piper-nf
 
 # Install NEXTFLOW and launch it 
+export NXF_VER=0.7.1
 wget -q -O - http://get.nextflow.io > nextflow && chmod +x nextflow
 ./nextflow -bg \
   -daemon.interface eth0 \
-  -daemon.tcp.socketTimeout 35s \
+  -daemon.tcp.socketTimeout 45s \
   -daemon.tcp.heartbeatFrequency 3s \
-  -daemon.tcp.maxMissedHeartbeats 3 \
+  -daemon.tcp.maxMissedHeartbeats 5 \
   -daemon.tcp.reconnectCount 15 \
-  -daemon.tcp.networkTimeout 10s \
+  -daemon.tcp.networkTimeout 15s \
+  -daemon.tcp.ackTimeout 15s \
   -daemon.join file:/glusterfs/users/tcoffee/piper-nf/cluster/
   
 
