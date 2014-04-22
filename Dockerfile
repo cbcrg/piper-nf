@@ -52,7 +52,7 @@ ADD bin/sim2matrix.pl /usr/local/bin/
 # Finalize environment
 #
 ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/blast/bin:/opt/exonerate/bin:/opt/tcoffee/bin
-ENV TMP=/tmp
+ENV TMP /tmp
 ENV CACHE_4_TCOFFEE /tmp/cache/
 ENV LOCKDIR_4_TCOFFEE /tmp/lck/
 ENV TMP_4_TCOFFEE /tmp/tmp/
