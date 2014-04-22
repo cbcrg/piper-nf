@@ -52,11 +52,13 @@ ADD bin/sim2matrix.pl /usr/local/bin/
 # Finalize environment
 #
 ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/blast/bin:/opt/exonerate/bin:/opt/tcoffee/bin
+ENV TMP=/tmp
+ENV CACHE_4_TCOFFEE /tmp/cache/
+ENV LOCKDIR_4_TCOFFEE /tmp/lck/
+ENV TMP_4_TCOFFEE /tmp/tmp/
 ENV DIR_4_TCOFFEE /opt/tcoffee
-ENV CACHE_4_TCOFFEE /.t_coffee/cache/
 ENV MAFFT_BINARIES /opt/tcoffee/plugins/linux/
 ENV EMAIL_4_TCOFFEE tcoffee.msa@gmail.com
-ENV LOCKDIR_4_TCOFFEE /opt/tcoffee/lck/
-ENV TMP_4_TCOFFEE /opt/tcoffee/tmp/
+
 
 RUN chown -R root:root /opt/*; chown -R root:root /usr/local/bin/*
