@@ -39,6 +39,15 @@ RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subse
 RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz; \
   tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt; \
   rm -rf tcoffee-Version_10.00.r1613.tar.gz
+  
+#
+# Installing WU-BLAST
+#  
+RUN wget -q http://www.tcoffee.org/Packages/Archive/wublast-060504-blast2.linux26-x64.tar.gz; \
+  mkdir /opt/wu-blast; \
+  tar xf wublast-060504-blast2.linux26-x64.tar.gz -C /opt/wu-blast/; \
+  find /opt/wu-blast/  -type l | grep -v BLOSUM | xargs rm ; \
+  rm -rf wublast-060504-blast2.linux26-x64.tar.gz
 
 
 #
@@ -51,7 +60,7 @@ ADD bin/sim2matrix.pl /usr/local/bin/
 #
 # Finalize environment
 #
-ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/blast/bin:/opt/exonerate/bin:/opt/tcoffee/bin
+ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/blast/bin:/opt/exonerate/bin:/opt/tcoffee/bin:/opt/wu-blast
 ENV TMP /tmp
 ENV CACHE_4_TCOFFEE /tmp/cache/
 ENV LOCKDIR_4_TCOFFEE /tmp/lck/
@@ -59,6 +68,8 @@ ENV TMP_4_TCOFFEE /tmp/tmp/
 ENV DIR_4_TCOFFEE /opt/tcoffee
 ENV MAFFT_BINARIES /opt/tcoffee/plugins/linux/
 ENV EMAIL_4_TCOFFEE tcoffee.msa@gmail.com
+ENV WUBLASTMAT /opt/wu-blast/matrix/
+ENV WUBLASTFILTER /opt/wu-blast/filter/
 
 
 RUN chown -R root:root /opt/*; chown -R root:root /usr/local/bin/*
