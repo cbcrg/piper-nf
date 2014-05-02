@@ -47,7 +47,8 @@ RUN wget -q http://www.tcoffee.org/Packages/Archive/wublast-060504-blast2.linux2
   mkdir /opt/wu-blast; \
   tar xf wublast-060504-blast2.linux26-x64.tar.gz -C /opt/wu-blast/; \
   find /opt/wu-blast/  -type l | grep -v BLOSUM | xargs rm ; \
-  rm -rf wublast-060504-blast2.linux26-x64.tar.gz
+  rm -rf wublast-060504-blast2.linux26-x64.tar.gz; \
+  ln -s /opt/wu-blast/blasta /opt/wu-blast/wu-blastn
 
 
 #
