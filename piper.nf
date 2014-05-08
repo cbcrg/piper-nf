@@ -69,12 +69,11 @@ params['genomes-folder'] = "tutorial/genomes/"
 queryFile = file(params.query)
 dbPath = file(params.genomesDb)
 
-if( !dbPath.exists() ) {
-    log.warn "Creating genomes-db path: $dbPath"
-    if( !dbPath.mkdirs() ) {
-        exit 1, "Cannot create genomes-db path: $dbPath -- check file system permissions"
-    }
+if( !dbPath.exists() && !dbPath.mkdirs() ) {
+    exit 1, "Cannot create genomes-db path: $dbPath -- check file system permissions"
 }
+log.info "Using genomes-db path: $dbPath"
+
 
 /*
  * Verify that user has specified a valid BLAST strategy parameter
@@ -86,11 +85,14 @@ assert params.cpus > 0
  * dump some info
  */
 
-log.info "P I P E R - RNA mapping pipeline - ver 1.2"
+log.info "P I P E R - RNA mapping pipeline - ver 1.3"
 log.info "=========================================="
 log.info "query               : ${queryFile}"
 log.info "genomes-db          : ${dbPath}"
 log.info "query-chunk-size    : ${params.queryChunkSize}"
+log.info "genomes-file        : ${params.genomesFile ?: '-'}"
+log.info "genomes-list        : ${params.genomesList ?: '-'}"
+log.info "genomes-folder      : ${params.genomesFolder ?: '-'}"
 log.info "result-dir          : ${params.resultDir}"
 log.info "blast-strategy      : ${params.blastStrategy}"
 log.info "align-strategy      : ${params.alignStrategy}"
@@ -117,47 +119,7 @@ log.info "\n"
  *
  */
 
-allGenomes = [:]
-
-// when the provided source path is a FILE
-// each line represent the path to a genome file
-if( params['genomes-file'] ) {
-    def genomesFile = file(params['genomes-file'])
-    if( genomesFile.empty() ) {
-        exit 1, "Not a valid input genomes descriptor file: ${genomesFile}"
-    }
-
-    allGenomes = parseGenomesFile(genomesFile)
-}
-
-else if( params['genomes-list'] ) {
-   allGenomes = parseGenomesList(params['genomes-list'])
-}
-
-else if( params['genomes-folder'] ) {
-    def sourcePath = file(params['genomes-folder'])
-    if( !sourcePath.exists() || sourcePath.empty() ) {
-        exit 4, "Not a valid input genomes folder: ${sourcePath}"
-    }
-
-    allGenomes = parseGenomesFolder(sourcePath)
-}
-
-else {
-    exit 5, "No input genome(s) provided -- Use one of the following CLI options 'genomes-file' or 'genomes-list' or 'genomes-folder' "
-}
-
-if( !allGenomes ) {
-    exit 6, "No genomes found in path"
-}
-
-allGenomes.each { name, genome_fa ->
-    log.info "Validating genome: $name -- file: ${genome_fa}"
-    if( !genome_fa.exists() ) {
-        exit 3, "Missing genome file: ${genome_fa}"
-    }
-}
-
+allGenomes = getGenomesMap(params)
 
 /*
  * Split the query input file in many small files (chunks).
@@ -173,9 +135,8 @@ querySplits = cacheableDir([queryFile, params.queryChunkSize])
 if( querySplits.empty() ) {
     log.info "Splitting query file: $queryFile .."
     chunkCount=0
-    queryFile.chunkFasta( params.queryChunkSize ) { sequence ->
-        def file = querySplits.resolve("seq_${chunkCount++}")
-        file.text = sequence
+    queryFile.splitFasta( by: params.queryChunkSize ) {
+        querySplits.resolve("seq_${chunkCount++}").text = it
     }
     log.info "Created $chunkCount input chunks to path: ${querySplits}"
 }
@@ -190,15 +151,15 @@ allQueryIDs = new HashSet()
 queryEntries = cacheableDir(queryFile)
 log.debug "Queries entries path: $queryEntries"
 
-queryFile.chunkFasta() { String chunk ->
-    String queryId = chunk.readLines()[0].replaceAll( /^>([^\s\|]*).*$/, '$1' )
+queryFile.splitFasta(record:[id:true, text:true]) { record ->
+    String queryId = record.header.replaceAll( /^>([^\s\|]*).*$/, '$1' )
     log.debug "Query entry id: $queryId"
 
     allQueryIDs << queryId
     // store the chunk to a file named as the 'queryId'
     def fileEntry = queryEntries.resolve(queryId)
-    if( fileEntry.empty() ) {
-        fileEntry.text = chunk
+    if( fileEntry.isEmpty() ) {
+        fileEntry.text = record.text
     }
 }
 
@@ -321,7 +282,7 @@ process blast {
 
 blast_chunks = blast_result.flatMap { id, query, result ->
 
-    result.chopLines( into:[], count: params.exonerateChunkSize ).collect { chunk -> [id, query, chunk] }
+    result.splitText( by: params.exonerateChunkSize, into: [] ).collect { chunk -> [id, query, chunk] }
 
 }
 
@@ -395,7 +356,7 @@ process normExonerate {
     def replace = []
     normalizedFasta = []
 
-    fasta.chopFasta(record:[id:true, seq:true]) { record ->
+    fasta.splitFasta(record:[id:true, sequence:true]) { record ->
 
         // parse the sequence id
         def matcher = (record.id =~ /(.*)_(hit\d*)(.*)/ )
@@ -422,8 +383,7 @@ process normExonerate {
         // now append the query content
         def item = ''
         item += ">${queryId}_${hitName}${extra}_${specie}\n"
-        item += record.seq
-        item += '\n'
+        item += record.sequence
 
         normalizedFasta << [ queryId, item ]
 
@@ -455,65 +415,42 @@ process normExonerate {
  *  All of them are stores in the cacheable path 'fastaCacheDir'
  *
  */
-fastaCacheDir = cacheableDir( [queryFile, allGenomes ] )
-log.debug "fastaCacheDir > $fastaCacheDir"
+
+queryFiles = [:]
+queryEntries.eachFile { queryFiles["${it.name}.mfa"] = it }
 
 alignFasta = normalizedFasta
-                .flatMap { it }
-                .reduce([:]) { map, tuple -> // tuple = ( queryId, sequence )
-                        def queryId = tuple[0]
-                        def sequence = tuple[1]
-                        def seqFile = map[queryId]
-                        if( seqFile == null ) {
-                            seqFile = fastaCacheDir.resolve("${queryId}.mfa");
-                            if( seqFile.exists() ) seqFile.delete()
-                            seqFile << queryEntries.resolve(queryId).text
-                            map[queryId] = seqFile
-                        }
-                        seqFile << sequence
-                        return map
-                    }
-                .flatMap() { it.values() }
+              .flatMap()
+              .collectFile( seed: queryFiles ) { queryId, sequence -> ["${queryId}.mfa", sequence] }
 
 
 /*
  * Aligns the the query sequence with hit sequences returned by exonerate
  */
 
-process align {
+process similarity {
     cache 'deep'
 
     input:
-    file seqs from alignFasta
+    file seq from alignFasta
 
     output:
-    file '*.aln' into alignment
+    file '*.sim' into similarity
 
     """
-    t_coffee -in '${seqs}' -method ${params.alignStrategy} -n_core ${params.cpus}
+    t_coffee -in '${seq}' -method ${params.alignStrategy} -n_core ${params.cpus}
+    t_coffee -other_pg seq_reformat -in *.aln -output sim > '${seq.baseName}.sim'
     """
 }
 
+
+similarityFiles = similarity.collectFile { [it.baseName, it] }.toList()
+
+
+
 /*
- * Calculate the similarity
+ * Copy the GFT files produces by the Exonerate steps into the result (current) folder
  */
-process similarity {
-    merge true
-
-    input:
-    file alignment
-
-    output:
-    file '*' into similarity
-
-    """
-    t_coffee -other_pg seq_reformat -in '$alignment' -output sim > ${alignment.baseName}
-    """
-}
-
-/*
-* Copy the GFT files produces by the Exonerate steps into the result (current) folder
-*/
 
 resultDir = file(params.resultDir)
 resultDir.with {
@@ -531,13 +468,14 @@ normalizedGtf.each { sourceFile ->
 }
 
 /*
-* Compute the similarity Matrix
-*/
+ * Compute the similarity Matrix
+ */
 process matrix {
     echo true
+    cache 'deep'
 
     input:
-    file similarity
+    file similarityFiles
 
     output:
     file 'simMatrix'
@@ -545,7 +483,7 @@ process matrix {
     """
     echo '\n====== Pipe-R sim matrix ======='
     mkdir data
-    mv ${similarity} data
+    mv ${similarityFiles} data
     sim2matrix.pl -query $queryFile -data_dir data -genomes_dir $dbPath | tee simMatrix
     echo '\n'
     """
@@ -554,6 +492,7 @@ process matrix {
 simMatrix.subscribe { file ->
     file.copyTo( resultDir.resolve('simMatrix.csv') )
 }
+
 
 
 
@@ -617,6 +556,51 @@ def parseGenomesFolder(sourcePath) {
         }
     }
     result
+}
+
+def getGenomesMap(Map params) {
+
+    def allGenomes = [:]
+    // when the provided source path is a FILE
+    // each line represent the path to a genome file
+    if( params['genomes-file'] ) {
+        def genomesFile = file(params['genomes-file'])
+        if( genomesFile.empty() ) {
+            exit 1, "Not a valid input genomes descriptor file: ${genomesFile}"
+        }
+
+        allGenomes = parseGenomesFile(genomesFile)
+    }
+
+    else if( params['genomes-list'] ) {
+        allGenomes = parseGenomesList(params['genomes-list'])
+    }
+
+    else if( params['genomes-folder'] ) {
+        def sourcePath = file(params['genomes-folder'])
+        if( !sourcePath.exists() || sourcePath.empty() ) {
+            exit 4, "Not a valid input genomes folder: ${sourcePath}"
+        }
+
+        allGenomes = parseGenomesFolder(sourcePath)
+    }
+
+    else {
+        exit 5, "No input genome(s) provided -- Use one of the following CLI options 'genomes-file' or 'genomes-list' or 'genomes-folder' "
+    }
+
+    if( !allGenomes ) {
+        exit 6, "No genomes found in path"
+    }
+
+    allGenomes.each { name, genome_fa ->
+        log.info "Validating genome: $name -- file: ${genome_fa}"
+        if( !genome_fa.exists() ) {
+            exit 3, "Missing genome file: ${genome_fa}"
+        }
+    }
+
+    return allGenomes
 }
 
 // ----===== TEST ====-------
