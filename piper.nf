@@ -24,6 +24,7 @@ import com.google.common.collect.Multiset
 import com.google.common.collect.HashMultiset
 import nextflow.util.CacheHelper
 import java.nio.file.Files
+import java.util.regex.Pattern
 
 
 /* 
@@ -437,7 +438,7 @@ process normExonerate {
     def str = gtf.text
     replace?.each {
         log.debug "normExonerate > Replacing hitName: $it in GTF file: $gtf"
-        def pattern = "hitName \"${it.queryId}_${it.oldHit}\";"
+        def pattern = Pattern.quote("hitName \"${it.queryId}_${it.oldHit}\";")
         str = str.replaceAll( ~/$pattern/, "hitName \"${it.queryId}_${it.newHit}\";" )
     }
 
