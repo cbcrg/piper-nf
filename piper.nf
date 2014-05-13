@@ -191,7 +191,7 @@ queryEntries = cacheableDir(queryFile)
 log.debug "Queries entries path: $queryEntries"
 
 queryFile.chunkFasta() { String chunk ->
-    String queryId = chunk.readLines()[0].replaceAll( /^>(\S*).*$/, '$1' )
+    String queryId = chunk.readLines()[0].replaceAll( /^>([^\s\|]*).*$/, '$1' )
     log.debug "Query entry id: $queryId"
 
     allQueryIDs << queryId
