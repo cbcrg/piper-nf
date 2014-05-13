@@ -490,7 +490,7 @@ process align {
     file '*.aln' into alignment
 
     """
-    t_coffee -in ${seqs} -method ${params.alignStrategy} -n_core ${params.cpus}
+    t_coffee -in '${seqs}' -method ${params.alignStrategy} -n_core ${params.cpus}
     """
 }
 
@@ -507,7 +507,7 @@ process similarity {
     file '*' into similarity
 
     """
-    t_coffee -other_pg seq_reformat -in $alignment -output sim > ${alignment.baseName}
+    t_coffee -other_pg seq_reformat -in '$alignment' -output sim > ${alignment.baseName}
     """
 }
 
