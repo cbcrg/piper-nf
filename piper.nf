@@ -151,7 +151,7 @@ allQueryIDs = new HashSet()
 queryEntries = cacheableDir(queryFile)
 log.debug "Queries entries path: $queryEntries"
 
-queryFile.splitFasta(record:[id:true, text:true]) { record ->
+queryFile.splitFasta(record: [header:true, text:true]) { record ->
     String queryId = record.header.replaceAll( /^>([^\s\|]*).*$/, '$1' )
     log.debug "Query entry id: $queryId"
 
@@ -459,7 +459,7 @@ resultDir.with {
 }
 
 
-normalizedGtf.each { sourceFile ->
+normalizedGtf.subscribe { sourceFile ->
     if( sourceFile.size() == 0 ) return
 
     def name = sourceFile.name
