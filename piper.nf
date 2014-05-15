@@ -308,7 +308,7 @@ exonerate_in = fmtChrOut
 
 process exonerate {
     input:
-    set ( specie, file(chr_db), file(exonerateQuery), file(blastResult) ) from exonerate_in
+    set ( specie, file(chr_db), file(exonerateQuery), file('blast_result') ) from exonerate_in
 
     output:
     set ( specie, '*.fa', '*.gtf') into exonerate_out
@@ -316,20 +316,24 @@ process exonerate {
     """
     exonerateRemapping.pl \
         -query ${exonerateQuery} \
-        -mf2 ${blastResult} \
+        -mf2 blast_result \
         -targetGenomeFolder ${chr_db} \
         -exonerate_lines_mode ${params.exonerateMode} \
         -exonerate_success_mode ${params.exonerateMode} \
         -ner no
 
-    if [ -s ${specie}.fa ]; then
-      repeat.pl ${specie}.fa ${specie}.ex.gtf ${params.repeatCov}
-      [[ ! -s rep${params.repeatCov}.fa ]] && exit 0
-      mv ${specie}.fa chunk.seq
-      mv ${specie}.ex.gtf chunk.ex.annot
-      mv rep${params.repeatCov}.fa ${specie}.fa
-      mv rep${params.repeatCov}.ex.gtf ${specie}.ex.gtf
-    fi 
+    if [ -s blast_result.fa ]; then
+      repeat.pl blast_result.fa blast_result.ex.gtf ${params.repeatCov}
+      if [ -s rep${params.repeatCov}.fa ]; then
+          mv blast_result.fa chunk.seq
+          mv blast_result.ex.gtf chunk.ex.annot
+          mv rep${params.repeatCov}.fa blast_result.fa
+          mv rep${params.repeatCov}.ex.gtf blast_result.ex.gtf
+      fi
+    fi
+
+    mv blast_result.fa '${specie}.fa'
+    mv blast_result.ex.gtf '${specie}.ex.gtf'
     """
 }
 
@@ -458,14 +462,7 @@ resultDir.with {
     mkdirs()
 }
 
-
-normalizedGtf.subscribe { sourceFile ->
-    if( sourceFile.size() == 0 ) return
-
-    def name = sourceFile.name
-    def targetFile = resultDir.resolve(name)
-    targetFile << sourceFile.text
-}
+normalizedGtf.collectFile(storeDir: resultDir)
 
 /*
  * Compute the similarity Matrix
@@ -636,8 +633,6 @@ def void testParseGenomesFile() {
 
 
 def void testParseGenomesList() {
-
-      def db = file('db')
 
       // call the function to test
       def result = parseGenomesList('alpha.fa, beta.fa, delta.fa')
