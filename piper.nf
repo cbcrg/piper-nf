@@ -152,7 +152,7 @@ queryEntries = cacheableDir(queryFile)
 log.debug "Queries entries path: $queryEntries"
 
 queryFile.splitFasta(record: [header:true, text:true]) { record ->
-    String queryId = record.header.replaceAll( /^>([^\s\|]*).*$/, '$1' )
+    String queryId = record.header.replaceAll( /^([^\s\|]*).*$/, '$1' )
     log.debug "Query entry id: $queryId"
 
     allQueryIDs << queryId
