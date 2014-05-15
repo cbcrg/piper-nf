@@ -489,11 +489,14 @@ process matrix {
     """
 }
 
+/*
+ * Save the similarity matrix
+ */
 simMatrix.subscribe { file ->
-    file.copyTo( resultDir.resolve('simMatrix.csv') )
+    def target = resultDir.resolve('simMatrix.csv')
+    println "Saving similarity matrix to file:\n-> $target"
+    file.copyTo(target)
 }
-
-
 
 
 // ----==== utility methods ====----
