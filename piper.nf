@@ -448,7 +448,7 @@ process similarity {
 }
 
 
-similarityFiles = similarity.collectFile { [it.baseName, it] }.toList()
+similarityFiles = similarity.collectFile { [it.baseName, it] }.toSortedList()
 
 
 
@@ -491,7 +491,7 @@ process matrix {
  */
 simMatrix.subscribe { file ->
     def target = resultDir.resolve('simMatrix.csv')
-    println "Saving similarity matrix to file:\n-> $target"
+    println "\nSaving similarity matrix to file:\n-> $target"
     file.copyTo(target)
 }
 
