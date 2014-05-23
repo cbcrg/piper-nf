@@ -357,8 +357,8 @@ process normExonerate {
   val normalizedFasta
 
   exec:
+    def chunks = []
     def replace = []
-    normalizedFasta = []
 
     fasta.splitFasta(record:[id:true, sequence:true]) { record ->
 
@@ -389,9 +389,12 @@ process normExonerate {
         item += ">${queryId}_${hitName}${extra}_${specie}\n"
         item += record.sequence
 
-        normalizedFasta << [ queryId, item ]
-
+        // return a pair made up of the queryId and the
+        chunks << [ queryId, item ]
     }
+
+    // clone the chunks list and assign it as an output value
+    normalizedFasta = chunks.clone()
 
     if( !replace ) {
         normalizedGtf = gtf
@@ -400,7 +403,7 @@ process normExonerate {
 
     // normalizing hitNames
     def str = gtf.text
-    replace?.each {
+    replace.each {
         log.debug "normExonerate > Replacing hitName: $it in GTF file: $gtf"
         def pattern = Pattern.quote("hitName \"${it.queryId}_${it.oldHit}\";")
         str = str.replaceAll( ~/$pattern/, "hitName \"${it.queryId}_${it.newHit}\";" )
