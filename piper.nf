@@ -319,7 +319,7 @@ process exonerate {
         -mf2 blast_result \
         -targetGenomeFolder ${chr_db} \
         -exonerate_lines_mode ${params.exonerateMode} \
-        -exonerate_success_mode ${params.exonerateMode} \
+        -exonerate_success_mode ${params.exonerateSuccess} \
         -ner no
 
     if [ -s blast_result.fa ]; then
