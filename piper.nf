@@ -44,15 +44,15 @@ import java.util.regex.Pattern
  *
  */
 
-params.queryChunkSize = 100
+params.queryChunkSize = 1000
 params.query = 'tutorial/5_RNA_queries.fa'
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
 params.alignStrategy = 'slow_pair'      // defines the T-Coffee alignment method
 params.exonerateSuccess = '1'
-params.exonerateMode = 'exhaustive'
-params.exonerateChunkSize = 200
+params.exonerateMode = 1000             // max lines read by exonerate. Use 'exhaustive' to read all 
+params.exonerateChunkSize = 2500
 params.repeatCov = 20
 params.cpus = 1
 
@@ -494,7 +494,7 @@ process matrix {
  */
 simMatrix.subscribe { file ->
     def target = resultDir.resolve('simMatrix.csv')
-    println "\nSaving similarity matrix to file:\n-> $target"
+    println "\nSaving similarity matrix to file:\n> $target"
     file.copyTo(target)
 }
 
