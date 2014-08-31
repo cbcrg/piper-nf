@@ -475,6 +475,7 @@ process matrix {
     cache 'deep'
 
     input:
+    file queryFile
     file dbPath
     file similarityFiles
 
