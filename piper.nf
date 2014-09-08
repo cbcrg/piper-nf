@@ -45,7 +45,7 @@ import java.util.regex.Pattern
  */
 
 params.queryChunkSize = 1000
-params.query = 'tutorial/5_RNA_queries.fa'
+params.query = "${baseDir}/tutorial/5_RNA_queries.fa"
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
@@ -64,7 +64,7 @@ params.cpus = 1
 // - genomes-folder: a directory containing a folder for each genome FASTA file
 params['genomes-file'] = null
 params['genomes-list'] = null
-params['genomes-folder'] = "tutorial/genomes/"
+params['genomes-folder'] = "${baseDir}/tutorial/genomes/"
 
 queryFile = file(params.query)
 dbPath = file(params.genomesDb)
@@ -475,6 +475,8 @@ process matrix {
     cache 'deep'
 
     input:
+    file queryFile
+    file dbPath
     file similarityFiles
 
     output:
