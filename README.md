@@ -7,15 +7,14 @@ A pipeline for the detection and mapping of long non-coding RNAs
 Quick start
 -----------
 
-Make sure you have installed the required dependencies listed below. 
+Make sure you have installed the required dependencies listed in the last section. 
 
-Install the Nextflow runtime by running the follwoing command: 
+Install the Nextflow runtime by running the following command: 
 
     $ curl -fsSL get.nextflow.io | bash
 
 
-When done, launch the pipeline execution by entering the following command 
-on your shell terminal:
+When done, you can launch the pipeline execution by entering the following command:
 
     $ ./nextflow run cbcrg/piper-nf
 
@@ -64,7 +63,8 @@ Pipeline parameters
 Run with Docker 
 ---------------- 
 
-Piper-nf dependecies are also distributed by using a [Docker](http://www.docker.com) container which frees you to install and configure all the pieces of software requied by Piper-nf. 
+Piper-nf dependecies are also distributed by using a [Docker](http://www.docker.com) container which frees you from 
+the installation and configuratin of all the pieces of software required by Piper-nf. 
 
 The Piper-nf Docker image is published at this address https://registry.hub.docker.com/u/cbcrg/piper-nf/
 
