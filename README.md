@@ -8,18 +8,16 @@ Quick start
 -----------
 
 Make sure you have installed the required dependencies listed below. 
-Clone the git repository on your computer with the following command: 
 
-    $ git clone git@github.com:cbcrg/piper-nf.git
+Install the Nextflow runtime by running the follwoing command: 
+
+    $ curl -fsSL get.nextflow.io | bash
 
 
-When done, move in the project root folder just created `piper-nf`, 
-it contains an example dataset in the `tutorial` folder. 
-
-Launch the pipeline execution by entering the following command 
+When done, launch the pipeline execution by entering the following command 
 on your shell terminal:
 
-    $ ./nextflow run piper.nf
+    $ ./nextflow run cbcrg/piper-nf
 
 By default the pipeline is executed against the provided example dataset. Check the *Pipeline parameters* section below
 to see how enter your data on the program command line.
@@ -63,34 +61,23 @@ Pipeline parameters
   * Example: `nextflow piper.nf --blast-strategy=wu-blast`
 
 
-Run using Vagrant
------------------
+Run with Docker 
+---------------- 
 
-To avoid having to install all the pipeline dependencies, you may test the pipeline using 
-the provided Vagrant VM, which downloads and configures all the required pieces 
-of software for you. See http://www.vagrantup.com for more details about Vagrant.
+Piper-nf dependecies are also distributed by using a [Docker](http://www.docker.com) container which frees you to install and configure all the pieces of software requied by Piper-nf. 
 
-The Vagrant environment uses the Ubuntu Precise 64 virtual machine, if you don't have it 
-in your Vagrant boxes list, it will be downloaded automatically. 
+The Piper-nf Docker image is published at this address https://registry.hub.docker.com/u/cbcrg/piper-nf/
 
-To launch the VM move to the pipeline root folder `grape-nf` and enter the following command:
+If you have Docker in installed in your computer pull it by entering the following command: 
+
+  $ docker pull cbcrg/piper-nf
   
-    $ vagrant up 
+  
+After that yuo will be able to run Piper-ng using the following command line: 
+
+  $ ./nextflow run cbcrg/piper-nf -with-docker
 
 
-When it boots up and the configuration steps are terminated, login into the VM instance 
-and move to the Grape pipeline folder 
-
-    $ vagrant ssh 
-    $ cd /vagrant
-    
-Now you can launch the pipeline as shown: 
-
-	 $ ./nextflow piper.nf
-
-
-When finished, stop the VM using the command `vagrant halt` or `vagrant destroy`, depending if you
-want to temporary stop the execution or delete permanently the VM with all its files. 
 
 
 Cluster support
@@ -126,26 +113,11 @@ synchronisation, file(s) staging/un-staging, etc.
 Alternatively the same declaration can be defined in the file `$HOME/.nextflow/config`.
 
 
-Run in the OSDC platform
--------------------------------
-
-Piper can be executed in the  [Open Science Data Cloud](https://www.opensciencedatacloud.org) platform.
-
-Launch instances of type `cbcrg_v.1.2`. One of them will used as *master* node i.e. where the 
-application will be started, the remaining nodes will run the pipeline tasks. 
-
-The *master* and *executor* nodes have to be instantiated separately. 
-
-When launching the *executor* nodes specify the following code in the *Customization Script* field 
-in order to configure the cluster:
-    
-    #!/bin/bash
-    curl -fsSL https://raw.github.com/cbcrg/piper-nf/master/cloud-boot.sh | bash
 
 
 Dependencies
 ------------
- 
+ * Java VM 7 (or higher) - http://www.oracle.com/technetwork/java/javase/downloads/
  * NCBI BLAST+ - http://blast.ncbi.nlm.nih.gov/
  * T-Coffee - http://tcoffee.org
  * Exonerate 2.2 - http://www.ebi.ac.uk/~guy/exonerate/ 
