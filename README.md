@@ -93,8 +93,8 @@ manager without modifying it.
 Currently the following clusters are supported:
 
   + Oracle/Univa/Open Grid Engine (SGE)
-  + Platform LSF (beta)
-  + SLURM (beta)
+  + Platform LSF
+  + SLURM
   + PBS/Torque
 
 
