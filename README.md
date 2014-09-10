@@ -74,7 +74,7 @@ If you have Docker in installed in your computer pull this image by entering the
     $ docker pull cbcrg/piper-nf
   
   
-After that yuo will be able to run Piper-nf using the following command line: 
+After that you will be able to run Piper-nf using the following command line: 
 
     $ ./nextflow run cbcrg/piper-nf -with-docker
 
