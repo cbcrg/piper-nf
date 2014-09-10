@@ -19,7 +19,7 @@ it contains an example dataset in the `tutorial` folder.
 Launch the pipeline execution by entering the following command 
 on your shell terminal:
 
-    $ ./nextflow piper.nf
+    $ ./nextflow run piper.nf
 
 By default the pipeline is executed against the provided example dataset. Check the *Pipeline parameters* section below
 to see how enter your data on the program command line.
