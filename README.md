@@ -14,7 +14,7 @@ Install the Nextflow runtime by running the following command:
     $ curl -fsSL get.nextflow.io | bash
 
 
-When done, you can launch the pipeline execution by entering the following command:
+When done, you can launch the pipeline execution by entering the command shown below:
 
     $ ./nextflow run cbcrg/piper-nf
 
