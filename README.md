@@ -7,7 +7,7 @@ A pipeline for the detection and mapping of long non-coding RNAs
 Quick start
 -----------
 
-Make sure you have installed the required dependencies listed in the last section. 
+Make sure you have all the required dependencies listed in the last section. 
 
 Install the Nextflow runtime by running the following command: 
 
@@ -18,8 +18,9 @@ When done, you can launch the pipeline execution by entering the following comma
 
     $ ./nextflow run cbcrg/piper-nf
 
+
 By default the pipeline is executed against the provided example dataset. Check the *Pipeline parameters* section below
-to see how enter your data on the program command line.
+to see how specify your input data on the program command line.
 
 Pipeline parameters
 -------------------
@@ -64,18 +65,18 @@ Run with Docker
 ---------------- 
 
 Piper-nf dependecies are also distributed by using a [Docker](http://www.docker.com) container which frees you from 
-the installation and configuratin of all the pieces of software required by Piper-nf. 
+the installation and configuration of all the pieces of software required by Piper-nf. 
 
 The Piper-nf Docker image is published at this address https://registry.hub.docker.com/u/cbcrg/piper-nf/
 
-If you have Docker in installed in your computer pull it by entering the following command: 
+If you have Docker in installed in your computer pull this image by entering the following command: 
 
-  $ docker pull cbcrg/piper-nf
+    $ docker pull cbcrg/piper-nf
   
   
-After that yuo will be able to run Piper-ng using the following command line: 
+After that yuo will be able to run Piper-nf using the following command line: 
 
-  $ ./nextflow run cbcrg/piper-nf -with-docker
+    $ ./nextflow run cbcrg/piper-nf -with-docker
 
 
 
@@ -83,7 +84,7 @@ After that yuo will be able to run Piper-ng using the following command line:
 Cluster support
 ---------------
 
-Piper-NF execution relies on [Nextflow](http://nextflow-project.org) framework which provides an abstraction between
+Piper-NF execution relies on [Nextflow](http://nextflow.io) framework which provides an abstraction between
 the pipeline functional logic and the underlying processing system.
 
 Thus it is possible to execute it on your computer or any cluster resource
@@ -91,9 +92,10 @@ manager without modifying it.
 
 Currently the following clusters are supported:
 
-  + Oracle Grid Engine (SGE)
-  + SLURM (beta)
+  + Oracle/Univa/Open Grid Engine (SGE)
   + Platform LSF (beta)
+  + SLURM (beta)
+  + PBS/Torque
 
 
 By default the pipeline is parallelized by spanning multiple threads in the machine where the script is launched.
@@ -112,7 +114,8 @@ synchronisation, file(s) staging/un-staging, etc.
 
 Alternatively the same declaration can be defined in the file `$HOME/.nextflow/config`.
 
-
+To lean more about the avaible settings and the configuration file read the Nextflow documentation 
+ http://www.nextflow.io/docs/latest/config.html
 
 
 Dependencies
