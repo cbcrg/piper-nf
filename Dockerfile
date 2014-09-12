@@ -1,4 +1,4 @@
-FROM fedora
+FROM fedora:20
 
 MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
 
