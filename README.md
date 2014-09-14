@@ -69,7 +69,7 @@ the installation and configuration of all the pieces of software required by Pip
 
 The Piper-nf Docker image is published at this address https://registry.hub.docker.com/u/cbcrg/piper-nf/
 
-If you have Docker in installed in your computer pull this image by entering the following command: 
+If you have Docker installed in your computer pull this image by entering the following command: 
 
     $ docker pull cbcrg/piper-nf
   
