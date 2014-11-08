@@ -18,8 +18,6 @@
  */
 
 
-import groovyx.gpars.dataflow.operator.DataflowEventAdapter
-import groovyx.gpars.dataflow.operator.DataflowProcessor
 import com.google.common.collect.Multiset
 import com.google.common.collect.HashMultiset
 import nextflow.util.CacheHelper
@@ -85,7 +83,7 @@ assert params.cpus > 0
  * dump some info
  */
 
-log.info "P I P E R - RNA mapping pipeline - ver 1.3"
+log.info "P I P E R - RNA mapping pipeline - ver 1.4"
 log.info "=========================================="
 log.info "query               : ${queryFile}"
 log.info "genomes-db          : ${dbPath}"
@@ -101,7 +99,6 @@ log.info "exonerate-mode:     : ${params.exonerateMode}"
 log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
 log.info "repeat-cov          : ${params.repeatCov}"
 log.info "cpus                : ${params.cpus}"
-log.info "pool-size           : ${config.poolSize}"
 log.info "\n"
 
 /*
@@ -172,9 +169,6 @@ queryFile.splitFasta(record: [header:true, text:true]) { record ->
  *
  */
 
-def sed_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gsed' : 'sed')
-def split_cmd = (System.properties['os.name'] == 'Mac OS X' ? 'gcsplit' : 'csplit')
-
 /*
  * Creates two channels that feed the 'formatBlast' and 'formatChr' processes.
  * Both of there emits tuples like (specie, genome fasta file)
@@ -184,7 +178,7 @@ fmtChrParams = Channel.create()
 Channel
         .from(allGenomes.entrySet())
         .map { entry -> [ entry.key, entry.value ] }
-        .split( fmtChrParams, fmtBlastParams )
+        .into( fmtChrParams, fmtBlastParams )
 
 /*
  * Given the genome FASTA file, format it to the BLAST binary format
@@ -232,14 +226,14 @@ process formatChr {
     chr_db = "${specie}/chr"
     """
     ## split the fasta in a file for each sequence 'seq_*'
-    ${split_cmd} ${genome_fa} '%^>%' '/^>/' '{*}' -f seq_ -n 5
+    awk '/^>/{f="seq_"++d} {print > f}' < ${genome_fa}
 
     ## create the target folder
     mkdir -p ${chr_db}
 
     ## rename and move to the target folder
     for x in seq_*; do
-    SEQID=`grep -E "^>" \$x | ${sed_cmd} -r 's/^>(\\S*).*/\\1/'`
+    SEQID=`grep -E "^>" \$x | sed -r 's/^>(\\S*).*/\\1/'`
     mv \$x ${chr_db}/\$SEQID;
     done
     """
