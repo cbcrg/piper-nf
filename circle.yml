@@ -1,0 +1,11 @@
+machine:
+  java:
+    version: openjdk7
+  services:
+    - docker
+    
+test:
+  override:
+    - ./nextflow -download
+    - docker pull cbcrg/mta-nf
+    - ./nextflow run . -with-docker
