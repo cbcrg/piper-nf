@@ -5,28 +5,28 @@ MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
 #
 # Install pre-requistes
 #
-RUN yum install -q -y which wget nano make gcc g++ gcc-gfortran expat-devel perl-CPAN perl-Net-SSLeay perl-IO-Socket-SSL openssl-devel unzip; \
-  wget -q -O cpanm http://cpanmin.us; \
-  chmod +x cpanm && mv cpanm bin/; \
+RUN yum install -q -y which wget nano make gcc g++ gcc-gfortran expat-devel perl-CPAN perl-Net-SSLeay perl-IO-Socket-SSL openssl-devel unzip && \
+  wget -q -O cpanm http://cpanmin.us && \
+  chmod +x cpanm && mv cpanm bin/ && \
   cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite
   
 #
 # Exonerate
 #
-RUN wget -q http://www.ebi.ac.uk/~guy/exonerate/exonerate-2.2.0-x86_64.tar.gz; \
-  tar xf exonerate-2.2.0-x86_64.tar.gz; \
-  mv exonerate-2.2.0-x86_64 /opt/; \
-  rm -rf exonerate-2.2.0-x86_64.tar.gz; \
-  ln -s /opt/exonerate-2.2.0-x86_64/ /opt/exonerate;
+RUN wget -q http://www.ebi.ac.uk/~guy/exonerate/exonerate-2.2.0-x86_64.tar.gz && \
+  tar xf exonerate-2.2.0-x86_64.tar.gz && \
+  mv exonerate-2.2.0-x86_64 /opt/ && \
+  rm -rf exonerate-2.2.0-x86_64.tar.gz && \
+  ln -s /opt/exonerate-2.2.0-x86_64/ /opt/exonerate
 
 #
 # BLAST
 #
-RUN wget -q ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.2.29+-x64-linux.tar.gz; \
-    tar xf ncbi-blast-2.2.29+-x64-linux.tar.gz; \
-    mv ncbi-blast-2.2.29+ /opt/; \
-    rm -rf ncbi-blast-2.2.29+-x64-linux.tar.gz; \
-    ln -s /opt/ncbi-blast-2.2.29+/ /opt/blast;
+RUN wget -q ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.2.29/ncbi-blast-2.2.29+-x64-linux.tar.gz && \
+    tar xf ncbi-blast-2.2.29+-x64-linux.tar.gz && \
+    mv ncbi-blast-2.2.29+ /opt/ && \
+    rm -rf ncbi-blast-2.2.29+-x64-linux.tar.gz && \
+    ln -s /opt/ncbi-blast-2.2.29+/ /opt/blast
 
 #
 # CHR_SUBSEQ
@@ -36,18 +36,18 @@ RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subse
 #
 # T-Coffee 
 #
-RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz; \
-  tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt; \
+RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz && \
+  tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt && \
   rm -rf tcoffee-Version_10.00.r1613.tar.gz
   
 #
 # Installing WU-BLAST
 #  
-RUN wget -q http://www.tcoffee.org/Packages/Archive/wublast-060504-blast2.linux26-x64.tar.gz; \
-  mkdir /opt/wu-blast; \
-  tar xf wublast-060504-blast2.linux26-x64.tar.gz -C /opt/wu-blast/; \
-  find /opt/wu-blast/  -type l | grep -v BLOSUM | xargs rm ; \
-  rm -rf wublast-060504-blast2.linux26-x64.tar.gz; \
+RUN wget -q http://www.tcoffee.org/Packages/Archive/wublast-060504-blast2.linux26-x64.tar.gz && \
+  mkdir /opt/wu-blast && \
+  tar xf wublast-060504-blast2.linux26-x64.tar.gz -C /opt/wu-blast/ && \
+  find /opt/wu-blast/  -type l | grep -v BLOSUM | xargs rm &&  \
+  rm -rf wublast-060504-blast2.linux26-x64.tar.gz && \
   ln -s /opt/wu-blast/blasta /opt/wu-blast/wu-blastn
 
 
