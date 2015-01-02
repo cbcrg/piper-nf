@@ -7,5 +7,5 @@ machine:
 test:
   override:
     - ./nextflow -download
-    - docker pull cbcrg/piper-nf:latest
+    - docker pull cbcrg/piper-nf
     - ./nextflow run . -with-docker

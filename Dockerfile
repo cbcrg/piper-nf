@@ -1,14 +1,11 @@
-FROM fedora:20
+FROM pditommaso/dkrbase:1.0
 
 MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
 
 #
 # Install pre-requistes
 #
-RUN yum install -q -y which wget nano make gcc g++ gcc-gfortran expat-devel perl-CPAN perl-Net-SSLeay perl-IO-Socket-SSL openssl-devel unzip && \
-  wget -q -O cpanm http://cpanmin.us && \
-  chmod +x cpanm && mv cpanm bin/ && \
-  cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite
+RUN cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite
   
 #
 # Exonerate
@@ -31,7 +28,8 @@ RUN wget -q ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.2.29/ncbi-blas
 #
 # CHR_SUBSEQ
 # 
-RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subseq; chmod +x /bin/chr_subseq; 
+RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subseq && \
+  chmod +x /bin/chr_subseq; 
 
 #
 # T-Coffee 
