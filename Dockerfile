@@ -1,11 +1,6 @@
-FROM pditommaso/dkrbase:1.0
+FROM pditommaso/dkrbase:1.1
 
 MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
-
-#
-# Install pre-requistes
-#
-RUN cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite
   
 #
 # Exonerate
@@ -30,13 +25,6 @@ RUN wget -q ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.2.29/ncbi-blas
 # 
 RUN wget -q -O /bin/chr_subseq http://www.tcoffee.org/Packages/Archive/chr_subseq && \
   chmod +x /bin/chr_subseq; 
-
-#
-# T-Coffee 
-#
-RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz && \
-  tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt && \
-  rm -rf tcoffee-Version_10.00.r1613.tar.gz
   
 #
 # Installing WU-BLAST
@@ -48,6 +36,17 @@ RUN wget -q http://www.tcoffee.org/Packages/Archive/wublast-060504-blast2.linux2
   rm -rf wublast-060504-blast2.linux26-x64.tar.gz && \
   ln -s /opt/wu-blast/blasta /opt/wu-blast/wu-blastn
 
+#
+# T-Coffee 
+#
+RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.tar.gz && \
+  tar xf tcoffee-Version_10.00.r1613.tar.gz -C /opt && \
+  rm -rf tcoffee-Version_10.00.r1613.tar.gz
+  
+#
+# Perl modules required by T-Coffee
+# 
+RUN cpan-install Env Net::SSLeay XML::Simple SOAP::Lite 
 
 #
 # Add local scripts
