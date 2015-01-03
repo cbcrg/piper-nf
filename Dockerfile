@@ -46,7 +46,8 @@ RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.
 #
 # Perl modules required by T-Coffee
 # 
-RUN cpan-install Env Net::SSLeay XML::Simple SOAP::Lite 
+RUN cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite && \
+  rm -rf /root/.cpanm/work/
 
 #
 # Add local scripts
