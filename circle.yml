@@ -8,4 +8,4 @@ test:
   override:
     - ./nextflow -download
     - docker pull cbcrg/piper-nf
-    - ./nextflow run . -with-docker
+    - WITH_DOCKER=1 NXF_CMD=./nextflow bash -x validate.sh

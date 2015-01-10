@@ -52,7 +52,6 @@ params.exonerateSuccess = '1'
 params.exonerateMode = 1000             // max lines read by exonerate. Use 'exhaustive' to read all 
 params.exonerateChunkSize = 2500
 params.repeatCov = 20
-params.cpus = 1
 
 
 // these parameters are mutually exclusive
@@ -77,14 +76,13 @@ log.info "Using genomes-db path: $dbPath"
  * Verify that user has specified a valid BLAST strategy parameter
  */
 assert params.blastStrategy in ['ncbi-blast','wu-blast']
-assert params.cpus > 0
 
 /*
  * dump some info
  */
 
-log.info "P I P E R - RNA mapping pipeline - ver 1.4"
-log.info "=========================================="
+log.info "P I P E R - RNA mapping pipeline - ver 1.4.1"
+log.info "============================================"
 log.info "query               : ${queryFile}"
 log.info "genomes-db          : ${dbPath}"
 log.info "query-chunk-size    : ${params.queryChunkSize}"
@@ -98,7 +96,6 @@ log.info "exonerate-success:  : ${params.exonerateSuccess}"
 log.info "exonerate-mode:     : ${params.exonerateMode}"
 log.info "exonerate-chunk-size: ${params.exonerateChunkSize}"
 log.info "repeat-cov          : ${params.repeatCov}"
-log.info "cpus                : ${params.cpus}"
 log.info "\n"
 
 /*
@@ -185,16 +182,16 @@ Channel
  */
 process formatBlast {
 
-    storeDir dbPath
+    storeDir { "$dbPath/$specie" }
 
     input:
     set (specie, file(genome_fa)) from fmtBlastParams
 
     output:
-    set (specie, file("$blast_db")) into fmtBlastOut
+    set (specie, file { blast_db }) into fmtBlastOut
 
     script:
-    blast_db = "$specie/${params.blastStrategy}-db"
+    blast_db = "${params.blastStrategy}-db"
 
     if( params.blastStrategy == 'ncbi-blast' )
     """
@@ -214,27 +211,26 @@ process formatBlast {
  */
 process formatChr {
 
-    storeDir dbPath
+    storeDir { "$dbPath/$specie" }
 
     input:
     set (specie, file(genome_fa)) from fmtChrParams
 
     output:
-    set (specie, file("$chr_db")) into fmtChrOut
+    set (specie, file('chr')) into fmtChrOut
 
     script:
-    chr_db = "${specie}/chr"
     """
     ## split the fasta in a file for each sequence 'seq_*'
     awk '/^>/{f="seq_"++d} {print > f}' < ${genome_fa}
 
     ## create the target folder
-    mkdir -p ${chr_db}
+    mkdir -p chr
 
     ## rename and move to the target folder
     for x in seq_*; do
     SEQID=`grep -E "^>" \$x | sed -r 's/^>(\\S*).*/\\1/'`
-    mv \$x ${chr_db}/\$SEQID;
+    mv \$x chr/\$SEQID;
     done
     """
 }
@@ -259,13 +255,13 @@ process blast {
 
         """
         fmt='6 qseqid sseqid evalue score qgi bitscore length nident positive mismatch pident ppos qacc gaps gaopen qaccver qlen qframe qstart qend sframe sstart send'
-        blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" -num_threads ${params.cpus} > ${blastId}.mf2
+        blastn -db $blast_db/db -query blastQuery -outfmt "\$fmt" -num_threads ${task.cpus} > ${blastId}.mf2
         """
 
 
     else if( params.blastStrategy == 'wu-blast' )
         """
-        wu-blastn $blast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${params.cpus} -filter=seg -lcfilter -errors -novalidctxok -nonnegok > ${blastId}.mf2
+        wu-blastn $blast_db/db blastQuery -mformat=2 -e 0.00001 -cpus ${task.cpus} -filter=seg -lcfilter -errors -novalidctxok -nonnegok > ${blastId}.mf2
         """
 
 }
@@ -439,7 +435,7 @@ process similarity {
     file '*.sim' into similarity
 
     """
-    t_coffee -in '${seq}' -method ${params.alignStrategy} -n_core ${params.cpus}
+    t_coffee -in '${seq}' -method ${params.alignStrategy} -n_core ${task.cpus}
     t_coffee -other_pg seq_reformat -in *.aln -output sim > '${seq.baseName}.sim'
     """
 }
