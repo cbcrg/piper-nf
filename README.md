@@ -124,6 +124,6 @@ Dependencies
  * NCBI BLAST+ - http://blast.ncbi.nlm.nih.gov/
  * T-Coffee - http://tcoffee.org
  * Exonerate 2.2 - http://www.ebi.ac.uk/~guy/exonerate/ 
- * chr_subseq - unknown author 
+ * chr_subseq - http://www.tcoffee.org/Packages/Archive/chr_subseq.tar.gz
  * gnu-sed (Mac OSX only)
  * gnu-coreutils (Mac OSX only)
