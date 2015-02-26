@@ -43,7 +43,7 @@ import java.util.regex.Pattern
  */
 
 params.queryChunkSize = 1000
-params.query = "gencode.fa"
+params.query = "${baseDir}/tutorial/5_RNA_queries.fa"
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
