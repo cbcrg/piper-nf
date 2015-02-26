@@ -43,7 +43,7 @@ import java.util.regex.Pattern
  */
 
 params.queryChunkSize = 1000
-params.query = "${baseDir}/tutorial/5_RNA_queries.fa"
+params.query = "gencode.fa"
 params.genomesDb = 'db'
 params.resultDir = 'result'
 params.blastStrategy = 'ncbi-blast'     // the blast tool to be used, choose between: ncbi-blast, wu-blast
@@ -52,6 +52,8 @@ params.exonerateSuccess = '1'
 params.exonerateMode = 1000             // max lines read by exonerate. Use 'exhaustive' to read all 
 params.exonerateChunkSize = 2500
 params.repeatCov = 20
+params.extension = 20000
+params.extensionFile = 'no'
 
 
 // these parameters are mutually exclusive
@@ -310,7 +312,9 @@ process exonerate {
         -targetGenomeFolder ${chr_db} \
         -exonerate_lines_mode ${params.exonerateMode} \
         -exonerate_success_mode ${params.exonerateSuccess} \
-        -ner no
+        -ner no \
+	-extensionFile ${params.extensionFile} \
+	-extension ${params.extension}
 
     if [ -s blast_result.fa ]; then
       repeat.pl blast_result.fa blast_result.ex.gtf ${params.repeatCov}

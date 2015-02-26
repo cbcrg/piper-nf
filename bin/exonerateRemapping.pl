@@ -27,9 +27,8 @@ if ($help > 0){
 
 #TAKE OPTIONS
 acceptedVariableSpace();
-my ($exonerateExtension , %info_querySizes , %chrLength , %allQueryNames  , $succesfull , %allExoneratedCoordinates , $querySizes  , $ID_of_mf2 , @clusterHeaderLines , $clusterConfigLine , $currentQuery_fa , $currentTarget_fa , $ortholog , $currentOrtholog_fa , $cmd_orthologFinder );
-my ($ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode  , $clusterName , $experimentName , $pipelineDirName) = options();
-my $extensionFile      = "<deprecated>";
+my (%info_querySizes , %chrLength , %allQueryNames  , $succesfull , %allExoneratedCoordinates , $querySizes  , $ID_of_mf2 , @clusterHeaderLines , $clusterConfigLine , $currentQuery_fa , $currentTarget_fa , $ortholog , $currentOrtholog_fa , $cmd_orthologFinder );
+my ($exonerateExtension, $extensionFile, $ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode  , $clusterName , $experimentName , $pipelineDirName) = options();
 my $clusterConfigName  = "<deprecated>";
 my $exonerateOutDir    = "./";
 ## orthologFinderCommandline();
@@ -672,7 +671,7 @@ exit;
 
 
 sub options {
-  my ($ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode  , $clusterName , $experimentName , $pipelineDirName);
+  my ($extension, $extensionFile, $ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode  , $clusterName , $experimentName , $pipelineDirName);
   my $spyQuery                     = 1;
   my $spyTargetGenomeFolder        = 1;
   my $spyMf2                       = 1;
@@ -684,8 +683,24 @@ sub options {
   my $spyExonerate_lines_mode      = 1;
   my $spyExonerate_success_mode    = 1;
   my $spyNer                       = 1;
+  my $spyExtensionFile             = 1;
+  my $spyExtension		   = 1;
 
   foreach my $field (0..$#ARGV){
+    if ($ARGV[$field] eq '-extension'){
+        $extension = $ARGV[1+$field];
+        $spyExtension = 2;
+    }
+    if ($spyExtension == 2){
+        $spyExtension = 3;
+    }
+    if ($ARGV[$field] eq '-extensionFile'){
+        $extensionFile = $ARGV[1+$field];
+        $spyExtensionFile = 2;
+    }
+    if ($spyExtensionFile == 2){
+        $spyExtensionFile = 3;
+    }
     if ($ARGV[$field] eq '-ner'){
 	$ner = $ARGV[1+$field];
 	$spyNer = 2;
@@ -793,6 +808,8 @@ sub options {
 #  die "Error[exonerateRemapping.pl]! Please provide the -experiment parameter\n"   if (! defined $experimentName);
 #  die "Error[exonerateRemapping.pl]! Please provide the -pipeline_dir parameter\n" if (! defined $pipelineDirName);
   die "Error[exonerateRemapping.pl]! -ner parameter can be either yes or no\n"     if ((defined $ner)&&($ner ne 'no')&&($ner ne 'yes'));
+  $extension = '20000'           if (! defined $extension);
+  $extensionFile = 'no'           if (! defined $extensionFile);
   $ner = 'no'                     if (! defined $ner);
   $chr_subseq = 'chr_subseq'      if (! defined $chr_subseq);
   $clusterName = 'off'            if (! defined $clusterName);
@@ -807,11 +824,11 @@ sub options {
   $exonerate_success_mode = 1     if (! defined $exonerate_success_mode);
 
 
-  return ($ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode   , $clusterName , $experimentName , $pipelineDirName);
+  return ( $extension, $extensionFile, $ner , $queryFile , $targetGenomeFolder , $mf2 , $chr_subseq , $exonerateMinPercentLength , $exonerate_lines_mode  , $exonerate_success_mode   , $clusterName , $experimentName , $pipelineDirName);
 }
 
 sub acceptedVariableSpace {
-  my %space = ('-ner' => 1 , '-pipeline_dir' => 1 , '-experiment' => 1  , '-cluster' => 1  , '-exonerate_lines_mode' => 1  , '-exonerate_success_mode' => 1  , '-exonerateMinPercentLength' => 1  , '-chr_subseq' => 1  , '-mf2' => 1  , '-targetGenomeFolder' => 1  , '-query' => 1 );
+  my %space = ( '-extension' => 1, '-extensionFile' => 1, '-ner' => 1 , '-pipeline_dir' => 1 , '-experiment' => 1  , '-cluster' => 1  , '-exonerate_lines_mode' => 1  , '-exonerate_success_mode' => 1  , '-exonerateMinPercentLength' => 1  , '-chr_subseq' => 1  , '-mf2' => 1  , '-targetGenomeFolder' => 1  , '-query' => 1 );
   foreach my $field (0..$#ARGV){
     if (($ARGV[$field] =~/^-/) && (! defined $space{"$ARGV[$field]"})){
       print "Error[exonerateRemapping.pl]! $ARGV[$field] it is not a valid parameter\n";
@@ -820,25 +837,12 @@ sub acceptedVariableSpace {
   }
 }
 
+
 sub extensionStrategy {
-#    open (S,"<$extensionFile") or die "Error! cannot read $extensionFile $!\n";
-#    my $lineCounter = 0;
-#    foreach my $line (<S>){
-#	next if ($line=~/^\s*$/);
-#	last if ($lineCounter == 1);
-#	if ($line=~/__arbitrary_extension__(\d+)/){
-#	    $exonerateExtension = $1;
-#	}
-#	$lineCounter = 1;
-#    }
-#    close S;
-
-    $exonerateExtension = 20000;
-
-#    if (! defined $exonerateExtension) {
-#	$querySizes = $extensionFile;
-#	readQuerySizes();
-#    }
+    if ($extensionFile ne 'no') {
+      $querySizes = $extensionFile;
+      readQuerySizes();
+    }
 }
 
 sub readClusterConfig {
