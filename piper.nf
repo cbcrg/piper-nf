@@ -54,6 +54,7 @@ params.exonerateChunkSize = 2500
 params.repeatCov = 20
 params.extension = 20000
 params.extensionFile = 'no'
+params.osname = 'linux'
 
 
 // these parameters are mutually exclusive
@@ -167,6 +168,9 @@ queryFile.splitFasta(record: [header:true, text:true]) { record ->
  * by the next step in the pipeline using the variable 'blastName'
  *
  */
+ 
+def sed_cmd = (params.osname == 'osx' ? 'gsed' : 'sed')
+def split_cmd = (params.osname == 'osx' ? 'gcsplit' : 'csplit') 
 
 /*
  * Creates two channels that feed the 'formatBlast' and 'formatChr' processes.
@@ -184,7 +188,7 @@ Channel
  */
 process formatBlast {
 
-    storeDir { "$dbPath/$specie" }
+    storeDir { dbPath/specie }
 
     input:
     set (specie, file(genome_fa)) from fmtBlastParams
@@ -213,7 +217,7 @@ process formatBlast {
  */
 process formatChr {
 
-    storeDir { "$dbPath/$specie" }
+    storeDir { dbPath/specie }
 
     input:
     set (specie, file(genome_fa)) from fmtChrParams
@@ -224,14 +228,14 @@ process formatChr {
     script:
     """
     ## split the fasta in a file for each sequence 'seq_*'
-    awk '/^>/{f="seq_"++d} {print > f}' < ${genome_fa}
+    ${split_cmd} ${genome_fa} '%^>%' '/^>/' '{*}' -f seq_ -n 5
 
     ## create the target folder
     mkdir -p chr
 
     ## rename and move to the target folder
     for x in seq_*; do
-    SEQID=`grep -E "^>" \$x | sed -r 's/^>(\\S*).*/\\1/'`
+    SEQID=`grep -E "^>" \$x | ${sed_cmd} -r 's/^>(\\S*).*/\\1/'`
     mv \$x chr/\$SEQID;
     done
     """
