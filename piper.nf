@@ -84,7 +84,7 @@ assert params.blastStrategy in ['ncbi-blast','wu-blast']
  * dump some info
  */
 
-log.info "P I P E R - RNA mapping pipeline - ver 1.4.1"
+log.info "P I P E R - RNA mapping pipeline - ver 1.4.2"
 log.info "============================================"
 log.info "query               : ${queryFile}"
 log.info "genomes-db          : ${dbPath}"
@@ -276,11 +276,7 @@ process blast {
  * Split the blast result in chunk of at most *params.exonerateChunkSize* lines
  */
 
-blast_chunks = blast_result.flatMap { id, query, result ->
-
-    result.splitText( by: params.exonerateChunkSize, into: [] ).collect { chunk -> [id, query, chunk] }
-
-}
+blast_chunks = blast_result.splitText( by: params.exonerateChunkSize, elem: 2 )
 
 /*
  * Join together the output of 'formatChr' step with the 'blast' step
