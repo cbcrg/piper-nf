@@ -70,5 +70,6 @@ ENV EMAIL_4_TCOFFEE tcoffee.msa@gmail.com
 ENV WUBLASTMAT /opt/wu-blast/matrix/
 ENV WUBLASTFILTER /opt/wu-blast/filter/
 
-
-RUN chown -R root:root /opt/*; chown -R root:root /usr/local/bin/*
+RUN apt-get install -y procps && \
+  chown -R root:root /opt/* && \
+  chown -R root:root /usr/local/bin/*
