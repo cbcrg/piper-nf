@@ -1,7 +1,6 @@
-FROM pditommaso/dkrbase:1.1
+FROM pditommaso/sl65base
+MAINTAINER paolo.ditommaso@gmail.com
 
-MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
-  
 #
 # Exonerate
 #
@@ -46,9 +45,12 @@ RUN wget -q http://www.tcoffee.org/Packages/Archive/tcoffee-Version_10.00.r1613.
 #
 # Perl modules required by T-Coffee
 # 
-RUN cpanm -q -n Env Net::SSLeay XML::Simple SOAP::Lite && \
-  rm -rf /root/.cpanm/work/
-
+RUN yum install -y perl-CPAN && \
+  PERL_MM_USE_DEFAULT=1 PERL_EXTUTILS_AUTOINSTALL="--defaultdeps" perl -MCPAN -e "install Env" && \
+  PERL_MM_USE_DEFAULT=1 PERL_EXTUTILS_AUTOINSTALL="--defaultdeps" perl -MCPAN -e "install Net::SSLeay" && \
+  PERL_MM_USE_DEFAULT=1 PERL_EXTUTILS_AUTOINSTALL="--defaultdeps" perl -MCPAN -e "install XML::Simple" && \
+  PERL_MM_USE_DEFAULT=1 PERL_EXTUTILS_AUTOINSTALL="--defaultdeps" perl -MCPAN -e "SOAP::Lite" 
+  
 #
 # Add local scripts
 #
@@ -69,7 +71,3 @@ ENV MAFFT_BINARIES /opt/tcoffee/plugins/linux/
 ENV EMAIL_4_TCOFFEE tcoffee.msa@gmail.com
 ENV WUBLASTMAT /opt/wu-blast/matrix/
 ENV WUBLASTFILTER /opt/wu-blast/filter/
-
-RUN apt-get install -y procps && \
-  chown -R root:root /opt/* && \
-  chown -R root:root /usr/local/bin/*
