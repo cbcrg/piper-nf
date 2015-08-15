@@ -16,15 +16,15 @@ Make sure you have the required dependencies listed in the last section.
 
 1. Pull the required Docker image: 
 
-    $ docker pull cbcrg/piper-nf:peerj5515
+    `$ docker pull cbcrg/piper-nf:peerj5515`
 
 2. Download the benchmark dataset: 
 
-    $ aws s3 sync s3://cbcrg-eu/piper-chicken/ data
+    `$ aws s3 sync s3://cbcrg-eu/piper-chicken/ data`
 
 3. Launch the pipeline execution with the benchmark dataset
 	
-    $ nextflow run cbcrg/piper-nf -revision peerj5515 -with-docker -bg > log.txt
+    `$ nextflow run cbcrg/piper-nf -revision peerj5515 -with-docker -bg > log.txt`
 
 The pipeline will run as a background process and the output redirected to the `log.txt` file. 
 
