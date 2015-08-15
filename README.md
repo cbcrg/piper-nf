@@ -1,129 +1,42 @@
 PIPER-R NF
 ==========
 
-A pipeline for the detection and mapping of long non-coding RNAs
+A pipeline for the detection and mapping of long non-coding RNAs. 
 
+This version of the pipeline was used to assess the impact of Docker containers on the 
+performance of genomic tools. See https://peerj.com/preprints/1171/ and subsequent manuscript 
+peer review https://peerj.com/manuscripts/5515/
+
+To replicate the pipeline execution see the following section. 
 
 Quick start
 -----------
 
-Make sure you have all the required dependencies listed in the last section. 
+Make sure you have the required dependencies listed in the last section. 
 
-Install the Nextflow runtime by running the following command: 
+1. Pull the required Docker image: 
 
-    $ curl -fsSL get.nextflow.io | bash
+    $ docker pull cbcrg/piper-nf:peerj5515
 
+2. Download the benchmark dataset: 
 
-When done, you can launch the pipeline execution by entering the command shown below:
+    $ aws s3 sync s3://cbcrg-eu/piper-chicken/ data
 
-    $ ./nextflow run cbcrg/piper-nf
+3. Launch the pipeline execution with the benchmark dataset
+	
+    $ nextflow run cbcrg/piper-nf -revision peerj5515 -with-docker -bg > log.txt
 
+The pipeline will run as a background process and the output redirected to the `log.txt` file. 
 
-By default the pipeline is executed against the provided example dataset. Check the *Pipeline parameters* section below
-to see how specify your input data on the program command line.
+It will also create a file named `trace.csv` containing the run time information for each executed task.
 
-Pipeline parameters
--------------------
-
-#####query
-
-  * The query transcripts file in multi-fasta format
-  * Example: `nextflow run piper-nf --query=/some/path/query.fa`
-
-#####genomes-file
-
-  * The file listing the full paths to the genomes files
-  * Example: `nextflow run piper-nf --genomes-file=my-genomes.txt`
-
-
-#####genomes-db
-
-  * The location where the BLAST formatted *DB* are stored
-  * Example: `nextflow run piper-nf --genomes-db=/my/db/path`
-
-
-#####query-chunk-size
-
-  * Number of sequences in each chunck in which is sliced the query file
-  * Example: `nextflow run piper-nf --query-chunk-size=50`
-
-
-#####result-dir
-
-  * The location where the result files are stored.
-  * Please note: if the folder exists, the all existing content will be deleted without further notice
-  * Example: `nextflow run piper-nf --result-dir=./my-result/`
-
-
-#####blast-strategy
-
-  * Which BLAST program to be used, `ncbi-blast` (default) or `wu-blast`
-  * Example: `nextflow run piper-nf --blast-strategy=wu-blast`
-
-
-Run with Docker 
----------------- 
-
-Piper-nf dependecies are also distributed by using a [Docker](http://www.docker.com) container which frees you from 
-the installation and configuration of all the pieces of software required by Piper-nf. 
-
-The Piper-nf Docker image is published at this address https://registry.hub.docker.com/u/cbcrg/piper-nf/
-
-If you have Docker installed in your computer pull this image by entering the following command: 
-
-    $ docker pull cbcrg/piper-nf
-  
-  
-After that you will be able to run Piper-nf using the following command line: 
-
-    $ ./nextflow run cbcrg/piper-nf -with-docker
-
-
-
-
-Cluster support
----------------
-
-Piper-NF execution relies on [Nextflow](http://nextflow.io) framework which provides an abstraction between
-the pipeline functional logic and the underlying processing system.
-
-Thus it is possible to execute it on your computer or any cluster resource
-manager without modifying it.
-
-Currently the following clusters are supported:
-
-  + Oracle/Univa/Open Grid Engine (SGE)
-  + Platform LSF
-  + SLURM
-  + PBS/Torque
-
-
-By default the pipeline is parallelized by spanning multiple threads in the machine where the script is launched.
-
-To submit the execution to a SGE cluster create a file named `nextflow.config`, in the directory
-where the pipeline is going to be launched, with the following content:
-
-    task {
-      processor='sge'
-      queue='<your queue name>'
-    }
-
-In doing that, tasks will be executed through the `qsub` SGE command, and so your pipeline will behave like any
-other SGE job script, with the benefit that *Nextflow* will automatically and transparently manage the tasks
-synchronisation, file(s) staging/un-staging, etc.
-
-Alternatively the same declaration can be defined in the file `$HOME/.nextflow/config`.
-
-To lean more about the avaible settings and the configuration file read the Nextflow documentation 
- http://www.nextflow.io/docs/latest/config.html
+Note: the execution with Docker will produce some intermediate results with *root* ownership. You will need sudo/root permissions to delete them.
 
 
 Dependencies
 ------------
- * Java VM 7 (or higher) - http://www.oracle.com/technetwork/java/javase/downloads/
- * NCBI BLAST+ - http://blast.ncbi.nlm.nih.gov/
- * T-Coffee - http://tcoffee.org
- * Exonerate 2.2 - http://www.ebi.ac.uk/~guy/exonerate/ 
- * chr_subseq - http://www.tcoffee.org/Packages/Archive/chr_subseq.tar.gz
- * gnu-sed (Mac OSX only)
- * gnu-coreutils (Mac OSX only)
+ * Java VM 7 or later
+ * [Docker 1.0 or later](http://www.docker.io)
+ * [Nextflow 0.15.0 or later](http://nextflow.io)
+ 
+For the execution of the pipeline without using the Docker engine follow the installation steps in the included Dockerfile 

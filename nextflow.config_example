@@ -1,4 +1,0 @@
-params.cpus = 4
-
-process.$blast.clusterOptions = "-pe smp ${params.cpus}"
-process.$align.clusterOptions = "-pe smp ${params.cpus}"
