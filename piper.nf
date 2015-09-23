@@ -430,7 +430,6 @@ alignFasta = normalizedFasta
  */
 
 process similarity {
-    cache 'deep'
 
     input:
     file seq from alignFasta
@@ -466,7 +465,6 @@ normalizedGtf.collectFile(storeDir: resultDir)
  */
 process matrix {
     echo true
-    cache 'deep'
 
     input:
     file queryFile
