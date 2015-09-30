@@ -5,7 +5,7 @@ MAINTAINER Paolo Di Tommaso <paolo.ditommaso@gmail.com>
 #
 # Exonerate
 #
-RUN wget -q http://www.ebi.ac.uk/~guy/exonerate/exonerate-2.2.0-x86_64.tar.gz && \
+RUN wget -q http://www.ebi.ac.uk/sites/ebi.ac.uk/files/groups/flicek/exonerate/exonerate-2.2.0-x86_64.tar.gz && \
   tar xf exonerate-2.2.0-x86_64.tar.gz && \
   mv exonerate-2.2.0-x86_64 /opt/ && \
   rm -rf exonerate-2.2.0-x86_64.tar.gz && \
