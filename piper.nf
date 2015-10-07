@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014, Centre for Genomic Regulation (CRG) and the authors.
+ * Copyright (c) 2013-2015, Centre for Genomic Regulation (CRG) and the authors.
  *
  *   This file is part of 'Piper-NF'.
  *
@@ -170,7 +170,7 @@ queryFile.splitFasta(record: [header:true, text:true]) { record ->
 
 /*
  * Creates two channels that feed the 'formatBlast' and 'formatChr' processes.
- * Both of there emits tuples like (specie, genome fasta file)
+ * Both of there emits tuples like (species, genome fasta file)
  */
 fmtBlastParams = Channel.create()
 fmtChrParams = Channel.create()
@@ -184,13 +184,13 @@ Channel
  */
 process formatBlast {
 
-    storeDir { "$dbPath/$specie" }
+    storeDir { "$dbPath/$species" }
 
     input:
-    set (specie, file(genome_fa)) from fmtBlastParams
+    set (species, file(genome_fa)) from fmtBlastParams
 
     output:
-    set (specie, file { blast_db }) into fmtBlastOut
+    set (species, file { blast_db }) into fmtBlastOut
 
     script:
     blast_db = "${params.blastStrategy}-db"
@@ -213,13 +213,13 @@ process formatBlast {
  */
 process formatChr {
 
-    storeDir { "$dbPath/$specie" }
+    storeDir { "$dbPath/$species" }
 
     input:
-    set (specie, file(genome_fa)) from fmtChrParams
+    set (species, file(genome_fa)) from fmtChrParams
 
     output:
-    set (specie, file('chr')) into fmtChrOut
+    set (species, file('chr')) into fmtChrOut
 
     script:
     """
@@ -281,10 +281,10 @@ blast_chunks = blast_result.flatMap { id, query, result ->
 /*
  * Join together the output of 'formatChr' step with the 'blast' step
  *
- * Channel 'fmtChrOut' emits tuples with these elements (specie, chr_db)
- * Channel 'blast_result' emits tuples with these elements ( specie, blast_query, blast_hits )
+ * Channel 'fmtChrOut' emits tuples with these elements (species, chr_db)
+ * Channel 'blast_result' emits tuples with these elements ( species, blast_query, blast_hits )
  *
- * Finally, the channel 'exonerate_in' emits ( specie, chr_db, blast_query, blast_hits )
+ * Finally, the channel 'exonerate_in' emits ( species, chr_db, blast_query, blast_hits )
  */
 
 exonerate_in = fmtChrOut
@@ -300,10 +300,10 @@ exonerate_in = fmtChrOut
 
 process exonerate {
     input:
-    set ( specie, file(chr_db), file(exonerateQuery), file('blast_result') ) from exonerate_in
+    set ( species, file(chr_db), file(exonerateQuery), file('blast_result') ) from exonerate_in
 
     output:
-    set ( specie, '*.fa', '*.gtf') into exonerate_out
+    set ( species, '*.fa', '*.gtf') into exonerate_out
 
     """
     exonerateRemapping.pl \
@@ -326,8 +326,8 @@ process exonerate {
       fi
     fi
 
-    mv blast_result.fa '${specie}.fa'
-    mv blast_result.ex.gtf '${specie}.ex.gtf'
+    mv blast_result.fa '${species}.fa'
+    mv blast_result.ex.gtf '${species}.ex.gtf'
     """
 }
 
@@ -335,7 +335,7 @@ process exonerate {
  * Post-process 'exonerate' result
  *
  * It collects all the fasta and gtf files produced by the 'exonerate' step and the 'hitxx' suffix
- * in such a way that the 'xx' number is unique across the same specie and queryId
+ * in such a way that the 'xx' number is unique across the same species and queryId
  *
  */
 
@@ -344,7 +344,7 @@ Multiset hitSet = HashMultiset.create()
 process normExonerate {
 
   input:
-  set ( specie, fasta, gtf ) from exonerate_out
+  set ( species, fasta, gtf ) from exonerate_out
 
   output:
   val normalizedGtf
@@ -369,7 +369,7 @@ process normExonerate {
         log.debug "normExonerate > Processing queryId: ${queryId}"
 
         // update the hit name
-        def key = [specie, queryId]
+        def key = [species, queryId]
         def count = hitSet.add(key, 1) +1
         def newHit = "hit$count"
         if( hitName != newHit ) {
@@ -380,7 +380,7 @@ process normExonerate {
 
         // now append the query content
         def item = ''
-        item += ">${queryId}_${hitName}${extra}_${specie}\n"
+        item += ">${queryId}_${hitName}${extra}_${species}\n"
         item += record.sequence
 
         // return a pair made up of the queryId and the
