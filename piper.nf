@@ -172,12 +172,11 @@ queryFile.splitFasta(record: [header:true, text:true]) { record ->
  * Creates two channels that feed the 'formatBlast' and 'formatChr' processes.
  * Both of there emits tuples like (species, genome fasta file)
  */
-fmtBlastParams = Channel.create()
-fmtChrParams = Channel.create()
+
 Channel
         .from(allGenomes.entrySet())
         .map { entry -> [ entry.key, entry.value ] }
-        .into( fmtChrParams, fmtBlastParams )
+        .into{ fmtChrParams; fmtBlastParams }
 
 /*
  * Given the genome FASTA file, format it to the BLAST binary format
@@ -242,7 +241,7 @@ process formatChr {
  * Implements the BLAST step
  */
 
-blast_in = fmtBlastOut.spread( querySplits.listFiles() )
+fmtBlastOut.spread( querySplits.listFiles() ).set { blast_in }
 
 process blast {
     input:
@@ -272,11 +271,11 @@ process blast {
  * Split the blast result in chunk of at most *params.exonerateChunkSize* lines
  */
 
-blast_chunks = blast_result.flatMap { id, query, result ->
-
-    result.splitText( by: params.exonerateChunkSize, into: [] ).collect { chunk -> [id, query, chunk] }
-
-}
+blast_result
+    .flatMap { id, query, result ->
+        result.splitText( by: params.exonerateChunkSize, into: [] ).collect { chunk -> [id, query, chunk] }
+    }
+    .set { blast_chunks }
 
 /*
  * Join together the output of 'formatChr' step with the 'blast' step
@@ -287,11 +286,12 @@ blast_chunks = blast_result.flatMap { id, query, result ->
  * Finally, the channel 'exonerate_in' emits ( species, chr_db, blast_query, blast_hits )
  */
 
-exonerate_in = fmtChrOut
-                 .cross( blast_chunks )
-                 .map { chr, blast ->
-                        [ chr[0], chr[1], blast[1], blast[2] ]
-                      }
+fmtChrOut
+     .cross( blast_chunks )
+     .map { chr, blast ->
+            [ chr[0], chr[1], blast[1], blast[2] ]
+     }
+     .set { exonerate_in }
 
 
 /*
@@ -420,10 +420,10 @@ process normExonerate {
 queryFiles = [:]
 queryEntries.eachFile { queryFiles["${it.name}.mfa"] = it }
 
-alignFasta = normalizedFasta
-              .flatMap()
-              .collectFile( seed: queryFiles ) { queryId, sequence -> ["${queryId}.mfa", sequence] }
-
+normalizedFasta
+        .flatMap()
+        .collectFile( seed: queryFiles ) { queryId, sequence -> ["${queryId}.mfa", sequence] }
+        .set { alignFasta }
 
 /*
  * Aligns the the query sequence with hit sequences returned by exonerate
@@ -444,7 +444,10 @@ process similarity {
 }
 
 
-similarityFiles = similarity.collectFile { [it.baseName, it] }.toSortedList()
+similarity
+    .collectFile { [it.baseName, it] }
+    .toSortedList()
+    .set { similarityFiles }
 
 
 
