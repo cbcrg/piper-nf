@@ -183,7 +183,7 @@ Channel
  */
 process formatBlast {
 
-    storeDir { "$dbPath/$species" }
+    storeDir { dbPath / species }
 
     input:
     set (species, file(genome_fa)) from fmtBlastParams
@@ -212,7 +212,7 @@ process formatBlast {
  */
 process formatChr {
 
-    storeDir { "$dbPath/$species" }
+    storeDir { dbPath / species }
 
     input:
     set (species, file(genome_fa)) from fmtChrParams
