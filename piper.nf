@@ -276,9 +276,7 @@ process blast {
  */
 
 blast_result
-    .flatMap { id, query, result ->
-        result.splitText( by: params.exonerateChunkSize, into: [] ).collect { chunk -> [id, query, chunk] }
-    }
+    .splitText( by: params.exonerateChunkSize, elem: 2 )
     .set { blast_chunks }
 
 /*
