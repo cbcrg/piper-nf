@@ -84,7 +84,7 @@ assert params.blastStrategy in ['ncbi-blast','wu-blast']
  * dump some info
  */
 
-log.info "P I P E R - RNA mapping pipeline - ver 1.4.1"
+log.info "P I P E R - RNA mapping pipeline - ver 1.4.2"
 log.info "============================================"
 log.info "query               : ${queryFile}"
 log.info "genomes-db          : ${dbPath}"
@@ -477,7 +477,7 @@ process matrix {
     file similarityFiles
 
     output:
-    file 'simMatrix'
+    file simMatrix
 
     """
     echo '\n====== Pipe-R sim matrix ======='
