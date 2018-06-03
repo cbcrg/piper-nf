@@ -1,0 +1,15 @@
+sudo: required
+jdk:
+- openjdk8
+services:
+- docker
+branches:
+  only:
+  - master  
+install:
+- sudo apt-get -qq update
+- sudo apt-get -qq -y install graphviz realpath
+- docker pull cbcrg/piper-nf
+- ./nextflow -download
+script:
+- WITH_DOCKER=1 NXF_CMD=./nextflow bash -x validate.sh
