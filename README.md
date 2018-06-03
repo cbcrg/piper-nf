@@ -3,7 +3,7 @@ PIPER-R NF
 
 A pipeline for the detection and mapping of long non-coding RNAs
 
-![CircleCI status](https://circleci.com/gh/cbcrg/piper-nf.png?style=shield)
+[![Build Status](https://travis-ci.org/cbcrg/piper-nf.svg?branch=master)](https://travis-ci.org/cbcrg/piper-nf)
 
 Quick start
 -----------
